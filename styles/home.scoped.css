@@ -1,0 +1,113 @@
+:root{--pink:#eb5c8e;--pink-dark:#d8487d;--ink:#101010;--muted:#4e4e4e;--stroke:#ededed;--paper:#fff;--rosebg:#f9eaec;--bluebg:#e0f0fc;}
+    .oumalya-home *{box-sizing:border-box}
+    .oumalya-home{scroll-behavior:smooth}
+    .oumalya-home{margin:0;background:#fff;color:var(--ink);font-family:'DM Sans',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+    .oumalya-home button,.oumalya-home input{font:inherit}.oumalya-home button{cursor:pointer}.oumalya-home a{color:inherit;text-decoration:none}
+    .oumalya-home .site-header{height:63px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 clamp(24px,7.65vw,100px);background:#fff;position:relative;z-index:15;border-bottom:1px solid #f4f4f4}
+    .oumalya-home .brand{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:165px;white-space:nowrap}
+    .oumalya-home .brand-name{font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:700;letter-spacing:10px;padding-left:10px;line-height:1}
+    .oumalya-home .brand-sub{font-size:8px;font-weight:700;color:var(--pink);letter-spacing:4.5px;padding-left:4px}
+    .oumalya-home .main-nav{display:flex;align-items:center;gap:26px;margin-left:auto;margin-right:auto}
+    .oumalya-home .main-nav a{font-size:12px;white-space:nowrap;transition:color .2s}
+    .oumalya-home .main-nav a:hover,.oumalya-home .main-nav a.active{color:var(--pink)}
+    .oumalya-home .header-actions{display:flex;align-items:center;gap:20px}
+    .oumalya-home .icon-btn{position:relative;border:0;background:transparent;padding:2px;display:grid;place-items:center;color:#070707}
+    .oumalya-home .icon-btn svg{width:22px;height:22px;stroke-width:1.85}
+    .oumalya-home .cart-badge{position:absolute;right:-7px;top:-6px;display:grid;place-items:center;min-width:15px;height:15px;padding:0 3px;border-radius:100px;background:var(--pink);color:white;font-size:9px;font-weight:700}
+    .oumalya-home .menu-btn{display:none}
+    .oumalya-home .hero{height:396px;position:relative;overflow:hidden;background:linear-gradient(100deg,#eee0dd 0%,#f9ece8 51%,#dfcac2 100%)}
+    .oumalya-home .hero:before{content:'';position:absolute;left:-65px;top:-105px;width:490px;height:575px;border:40px solid rgba(255,255,255,.20);border-radius:48% 48% 0 0;transform:rotate(10deg);pointer-events:none}
+    .oumalya-home .hero-photo{position:absolute;inset:0 0 0 auto;width:51.5%;height:100%;object-fit:cover;object-position:center}
+    .oumalya-home .hero-photo:after{content:''}
+    .oumalya-home .hero::after{content:'';position:absolute;left:37%;top:0;bottom:0;width:17%;background:linear-gradient(90deg,#f6e6e2 0%,rgba(246,230,226,.60) 55%,transparent);pointer-events:none}
+    .oumalya-home .hero-content{position:relative;z-index:2;padding-top:72px;margin-left:clamp(60px,9.45vw,130px);max-width:460px}
+    .oumalya-home .eyebrow{font-size:13px;letter-spacing:5.5px;margin:0 0 10px;color:#373737;font-weight:500}
+    .oumalya-home h1,.oumalya-home h2,.oumalya-home h3,.oumalya-home p{margin-top:0}
+    .oumalya-home .hero h1{font-family:'Playfair Display',Georgia,serif;font-size:clamp(47px,5.6vw,61px);line-height:1.0;letter-spacing:-2px;font-weight:600;margin:0 0 17px}
+    .oumalya-home .hero h1 span{color:var(--pink);display:block}
+    .oumalya-home .hero-description{font-size:16px;line-height:1.45;color:#454545;margin:0 0 24px;max-width:365px}
+    .oumalya-home .pill-button{min-height:45px;display:inline-flex;align-items:center;justify-content:center;gap:16px;border:0;padding:0 25px;background:var(--pink);border-radius:100px;color:white;font-size:14px;font-weight:700;transition:background .2s,transform .2s}
+    .oumalya-home .pill-button:hover{background:var(--pink-dark);transform:translateY(-2px)}
+    .oumalya-home .pill-button svg{width:17px;height:17px}
+    .oumalya-home .slider-arrow{position:absolute;z-index:5;top:49%;transform:translateY(-50%);width:36px;height:36px;display:grid;place-items:center;background:white;border:0;border-radius:50%;box-shadow:0 2px 10px #0000000a}
+    .oumalya-home .slider-arrow.left{left:16px}.oumalya-home .slider-arrow.right{right:16px}
+    .oumalya-home .slider-arrow svg{width:18px;height:18px}
+    .oumalya-home .slider-dots{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:5;display:flex;gap:9px;align-items:center}
+    .oumalya-home .slider-dots button{height:8px;width:8px;border:0;border-radius:100%;background:#fffc; padding:0}
+    .oumalya-home .slider-dots button.active{background:var(--pink)}
+    .oumalya-home .container{max-width:1330px;margin:auto;padding-inline:clamp(20px,3.1vw,48px)}
+    .oumalya-home .categories{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:17px}
+    .oumalya-home .category{height:236px;position:relative;overflow:hidden;border-radius:9px;isolation:isolate}
+    .oumalya-home .category.abaya{background:linear-gradient(110deg,#faedef 0%,#f7e4e5 100%)}
+    .oumalya-home .category.crocs{background:var(--bluebg)}
+    .oumalya-home .category-photo{position:absolute;right:0;top:0;height:100%;object-fit:cover;object-position:center}
+    .oumalya-home .abaya .category-photo{width:54%}.oumalya-home .crocs .category-photo{width:65%}
+    .oumalya-home .category:after{content:'';position:absolute;z-index:1;left:35%;right:36%;top:0;bottom:0;background:linear-gradient(90deg,var(--rosebg),transparent);pointer-events:none}
+    .oumalya-home .category.crocs:after{background:linear-gradient(90deg,var(--bluebg),transparent)}
+    .oumalya-home .category-copy{position:absolute;top:53px;left:34px;z-index:2}
+    .oumalya-home .category h2{font-family:'Playfair Display',Georgia,serif;font-size:40px;font-weight:600;line-height:1.1;letter-spacing:-1.5px;margin:0 0 7px}
+    .oumalya-home .category p{font-size:13px;color:#555;margin-bottom:16px;white-space:nowrap}
+    .oumalya-home .category .pill-button{min-height:39px;padding-inline:23px;font-size:13px}
+    .oumalya-home .benefits{height:150px;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;padding-top:10px}
+    .oumalya-home .benefit{text-align:center;min-height:78px;padding:0 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+    .oumalya-home .benefit:not(:last-child){border-right:1px solid #e5e5e5}
+    .oumalya-home .benefit svg{width:31px;height:31px;stroke-width:1.65;margin-bottom:7px}
+    .oumalya-home .benefit strong{font-size:13px;line-height:1.25}
+    .oumalya-home .benefit span{font-size:12px;color:#484848;line-height:1.35}
+    .oumalya-home .new-arrivals{padding-top:9px}
+    .oumalya-home .section-heading{position:relative;text-align:center;margin-bottom:25px}
+    .oumalya-home .section-heading h2{font-family:'Playfair Display',Georgia,serif;font-size:32px;font-weight:600;letter-spacing:-.8px;margin:0}
+    .oumalya-home .heading-rule{width:48px;height:3px;background:var(--pink);margin:12px auto 0}
+    .oumalya-home .view-all{position:absolute;right:8px;top:20px;color:var(--pink);display:flex;align-items:center;gap:9px;font-size:12px}
+    .oumalya-home .view-all svg{width:16px;height:16px}
+    .oumalya-home .product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:0 8px}
+    .oumalya-home .product-image-wrap{aspect-ratio:1 / .985;position:relative;border-radius:9px;overflow:hidden;background:#f6f2f0}
+    .oumalya-home .product-image-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
+    .oumalya-home .product-card:hover .product-image-wrap img{transform:scale(1.045)}
+    .oumalya-home .favorite{position:absolute;right:11px;top:11px;width:29px;height:29px;background:#fff;border:none;border-radius:50%;display:grid;place-items:center;box-shadow:0 1px 5px #0001}
+    .oumalya-home .favorite svg{width:18px;height:18px;stroke-width:2}
+    .oumalya-home .favorite.is-favorite{color:var(--pink)}
+    .oumalya-home .product-name{font-size:12.5px;font-weight:700;margin:11px 2px 3px;line-height:1.4}
+    .oumalya-home .price{font-size:15px;font-weight:700;color:var(--pink);margin:0 2px 13px}
+    .oumalya-home .add-cart{height:42px;border:1px solid #f17da4;background:#fff;border-radius:100px;width:100%;font-size:12px;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .2s,color .2s}
+    .oumalya-home .add-cart svg{color:var(--pink);width:18px;height:18px}
+    .oumalya-home .add-cart:hover{background:var(--pink);color:white}.oumalya-home .add-cart:hover svg{color:white}
+    .oumalya-home .promo{height:226px;margin-top:28px;margin-bottom:18px;border-radius:11px;overflow:hidden;position:relative;background:linear-gradient(110deg,#f5dfe3 0%,#f8eaec 55%,#f5d3df 100%)}
+    .oumalya-home .promo-photo{position:absolute;right:0;top:0;width:51%;height:100%;object-fit:cover;object-position:center}
+    .oumalya-home .promo:after{content:'';position:absolute;top:0;bottom:0;left:37%;width:21%;background:linear-gradient(90deg,#f7e3e6,transparent)}
+    .oumalya-home .promo-copy{position:relative;z-index:1;padding:35px 0 0 51px;max-width:430px}
+    .oumalya-home .promo h2{font-family:'Playfair Display',Georgia,serif;font-size:35px;letter-spacing:-1px;font-weight:600;margin:0 0 7px;line-height:1.2}
+    .oumalya-home .promo p{font-size:16px;line-height:1.45;color:#444;max-width:370px;margin-bottom:16px}
+    .oumalya-home .promo .pill-button{min-height:41px;font-size:13px;padding-inline:24px}
+    .oumalya-home .footer{padding:30px 20px 38px;text-align:center;border-top:1px solid #f2f2f2;color:#666;font-size:12px}
+    .oumalya-home .footer strong{color:#171717;letter-spacing:3px;display:block;margin-bottom:8px}
+    /* Search, cart and toast */
+    .oumalya-home .screen-overlay{position:fixed;inset:0;background:#0007;z-index:30;opacity:0;pointer-events:none;transition:opacity .25s}
+    .oumalya-home .screen-overlay.open{opacity:1;pointer-events:auto}
+    .oumalya-home .drawer{position:fixed;right:0;top:0;bottom:0;width:min(420px,95vw);background:#fff;z-index:31;display:flex;flex-direction:column;transform:translateX(110%);transition:transform .3s;box-shadow:-12px 0 40px #0001}
+    .oumalya-home .drawer.open{transform:translateX(0)}
+    .oumalya-home .drawer-header{display:flex;justify-content:space-between;align-items:center;padding:23px 26px;border-bottom:1px solid #eee}
+    .oumalya-home .drawer-header h2{font-family:'Playfair Display',Georgia,serif;font-size:26px;margin:0}
+    .oumalya-home .drawer-list{overflow-y:auto;flex:1;padding:20px 25px}
+    .oumalya-home .drawer-item{display:flex;gap:13px;padding:12px 0;border-bottom:1px solid #eee}
+    .oumalya-home .drawer-item img{width:78px;height:78px;border-radius:6px;object-fit:cover}
+    .oumalya-home .drawer-item-info{flex:1;font-size:13px}.oumalya-home .drawer-item-info strong{display:block;margin-bottom:7px}
+    .oumalya-home .qty-controls{display:flex;align-items:center;gap:11px;margin-top:9px}
+    .oumalya-home .qty-controls button{border:1px solid #ddd;background:white;border-radius:5px;width:23px;height:23px}
+    .oumalya-home .drawer-bottom{border-top:1px solid #eee;padding:20px 26px 28px}
+    .oumalya-home .cart-total{display:flex;align-items:center;justify-content:space-between;font-weight:700;margin-bottom:18px}
+    .oumalya-home .checkout{width:100%}.oumalya-home .empty-cart{padding:60px 20px;text-align:center;color:#777;font-size:14px}
+    .oumalya-home .toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,30px);opacity:0;background:#1a1a1a;color:white;padding:12px 23px;border-radius:50px;font-size:13px;z-index:40;pointer-events:none;transition:all .25s;max-width:90vw;text-align:center}
+    .oumalya-home .toast.show{transform:translate(-50%,0);opacity:1}
+    .oumalya-home .search-modal{position:fixed;z-index:32;top:80px;left:50%;transform:translateX(-50%);width:min(570px,92vw);background:white;padding:28px;border-radius:14px;box-shadow:0 10px 50px #0003;display:none}
+    .oumalya-home .search-modal.open{display:block}.oumalya-home .search-modal h2{font-family:'Playfair Display',Georgia,serif;margin:0 0 12px}
+    .oumalya-home .search-modal input{width:100%;border:1px solid #ddd;border-radius:8px;padding:13px;outline-color:var(--pink)}
+    .oumalya-home .search-results{margin-top:14px;display:grid;gap:6px}.oumalya-home .search-results button{background:#fdf5f7;border:0;text-align:left;padding:12px;border-radius:6px}
+    @media(min-width:1350px){.oumalya-home .site-header{justify-content:center;gap:90px}.oumalya-home .main-nav{margin:0}.oumalya-home .hero{max-width:1440px;margin:auto}}
+    @media(max-width:900px){.oumalya-home .site-header{padding:0 26px}.oumalya-home .brand{min-width:145px}.oumalya-home .main-nav{gap:13px}.oumalya-home .main-nav a{font-size:11px}.oumalya-home .header-actions{gap:12px}.oumalya-home .hero-content{margin-left:70px}.oumalya-home .category-copy{left:24px}.oumalya-home .category h2{font-size:35px}.oumalya-home .category p{font-size:12px}.oumalya-home .category .pill-button{padding-inline:16px}}
+    @media(max-width:710px){.oumalya-home .site-header{height:64px;padding:0 19px}.oumalya-home .menu-btn{display:grid}.oumalya-home .brand{min-width:0}.oumalya-home .brand-name{font-size:15px;letter-spacing:7px;padding-left:7px}.oumalya-home .brand-sub{font-size:7px}.oumalya-home .header-actions{gap:15px}.oumalya-home .header-actions .account-btn{display:none}.oumalya-home .main-nav{display:none;position:absolute;top:64px;left:0;right:0;background:#fff;flex-direction:column;padding:20px;align-items:stretch;gap:0;box-shadow:0 12px 19px #0001}.oumalya-home .main-nav.open{display:flex}.oumalya-home .main-nav a{font-size:14px;padding:12px;border-bottom:1px solid #f2f2f2}.oumalya-home .hero{height:560px;display:flex;align-items:flex-start}.oumalya-home .hero-photo{width:100%;height:53%;top:auto;bottom:0;object-position:center 30%}.oumalya-home .hero::after{display:none}.oumalya-home .hero-content{padding-top:30px;margin-left:35px;margin-right:25px;max-width:340px}.oumalya-home .hero h1{font-size:47px}.oumalya-home .hero-description{font-size:14px;max-width:290px;margin-bottom:17px}.oumalya-home .eyebrow{font-size:10px;letter-spacing:4px}.oumalya-home .slider-arrow{top:74%}.oumalya-home .categories{grid-template-columns:1fr}.oumalya-home .category{height:228px}.oumalya-home .category-copy{top:52px;left:27px}.oumalya-home .category h2{font-size:38px}.oumalya-home .benefits{height:auto;grid-template-columns:repeat(2,1fr);padding:28px 0;row-gap:25px}.oumalya-home .benefit:nth-child(2){border:0}.oumalya-home .benefit strong{font-size:12px}.oumalya-home .benefit span{font-size:11px}.oumalya-home .new-arrivals{padding-top:12px}.oumalya-home .section-heading h2{font-size:30px}.oumalya-home .view-all{position:static;justify-content:center;margin-top:12px}.oumalya-home .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 13px;padding:0}.oumalya-home .product-name{font-size:12px}.oumalya-home .price{margin-bottom:10px}.oumalya-home .add-cart{font-size:11px;gap:5px}.oumalya-home .promo{height:360px}.oumalya-home .promo-photo{width:100%;height:57%;top:auto;bottom:0}.oumalya-home .promo:after{display:none}.oumalya-home .promo-copy{padding:27px 25px}.oumalya-home .promo h2{font-size:31px}.oumalya-home .promo p{font-size:13px;margin-bottom:13px;max-width:285px}.oumalya-home .promo .pill-button{min-height:36px}.oumalya-home .footer{padding:22px 15px}}
+    @media(max-width:390px){.oumalya-home .header-actions{gap:9px}.oumalya-home .hero-content{margin-left:30px}.oumalya-home .hero h1{font-size:42px}.oumalya-home .category h2{font-size:32px}.oumalya-home .category-copy{left:21px}.oumalya-home .category .pill-button{font-size:11px}.oumalya-home .category p{font-size:11px}.oumalya-home .product-grid{gap:12px}.oumalya-home .add-cart{font-size:10px;padding:0 4px}}
+    @media(prefers-reduced-motion:reduce){.oumalya-home *,.oumalya-home *:before,.oumalya-home *:after{scroll-behavior:auto!important;transition:none!important}}
+  
+/* Navigation globale OUMALYA */
+.oumalya-home .home-footer-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:1200px;margin:auto}.oumalya-home .home-footer-inner p{margin:8px 0 0;font-size:12px}.oumalya-home .home-footer-inner nav{display:flex;flex-wrap:wrap;gap:16px}.oumalya-home .home-footer-inner nav a{color:#534d4e;font-size:12px}.oumalya-home .home-footer-inner nav a:hover{color:#eb5c8e}.oumalya-home img{max-width:100%}@media(max-width:700px){.oumalya-home .home-footer-inner{display:block;text-align:center}.oumalya-home .home-footer-inner nav{justify-content:center;margin-top:17px}.oumalya-home .site-header{gap:8px;padding:0 15px}.oumalya-home .main-nav.open{z-index:40}.oumalya-home .categories .category{min-width:0}.oumalya-home .product-image-wrap a{display:block;height:100%}}

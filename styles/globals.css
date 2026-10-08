@@ -1,0 +1,43 @@
+:root {
+  --pink: #eb5c8e;
+  --pink-dark: #d8487d;
+  --ink: #101010;
+  --muted: #4e4e4e;
+  --stroke: #ededed;
+  --paper: #fff;
+  --rosebg: #f9eaec;
+  --bluebg: #e0f0fc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #fff;
+  color: var(--ink);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+}

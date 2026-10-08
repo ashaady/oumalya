@@ -1,0 +1,43 @@
+OUMALYA CLOTHING — SITE E-COMMERCE RESPONSIVE (DÉMONSTRATION)
+==========================================================
+
+PAGES (9)
+- index.html       : accueil
+- boutique.html    : boutique / catégories Abayas et Crocs / filtres
+- produit.html     : fiche produit (fonctionne avec ?id=crocs-rose, etc.)
+- panier.html      : panier avec quantités / tailles / suppression
+- commande.html    : coordonnées + récapitulatif de commande à copier
+- apropos.html     : présentation de la marque
+- contact.html     : formulaire de contact (message à copier)
+- livraison.html   : livraison et questions fréquentes
+- favoris.html     : favoris enregistrés dans le navigateur
+
+INSTALLATION ET TEST
+1. Extraire le fichier ZIP.
+2. Ouvrir le dossier OUMALYA.
+3. Pour consulter le design, ouvrir index.html dans un navigateur.
+4. Pour tester correctement le panier entre les pages, utiliser une
+   adresse web commune (par exemple VS Code + extension Live Server),
+   ou ouvrir un terminal dans le dossier puis lancer :
+   python -m http.server 8000
+   et ouvrir http://localhost:8000/index.html
+   (La persistance localStorage peut varier entre les pages file://.)
+
+IMAGES : photos directement intégrées dans les fichiers HTML ; aucun
+fichier d'images séparé requis, et les images s'affichent hors connexion.
+Les polices Google Fonts sont optionnelles : repli sur polices système.
+
+IMPORTANT — AVANT PUBLICATION
+- Les montants affichés (15 000 F et 25 000 F) sont des PRIX DE DÉMONSTRATION.
+- Les photographies des abayas sont illustratives ; photos, tailles,
+  disponibilité et descriptions doivent être confirmées avec la boutique.
+- Renseigner le WhatsApp, les coordonnées, les conditions de retour,
+  les modalités et frais de livraison réels.
+- Les formulaires produisent un texte à copier. Aucune commande ou
+  prise de contact n'est envoyée au commerçant automatiquement.
+- Pas de backend ni de paiement en ligne.
+- Les données du panier et les favoris sont enregistrés seulement dans
+  le navigateur du client (localStorage).
+
+CONSEIL : pour mettre en ligne une vraie boutique, ajouter stockage des
+produits, stock, suivi des commandes et une intégration WhatsApp/checkout.
