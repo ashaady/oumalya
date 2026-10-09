@@ -47,9 +47,21 @@ export default function AdminPage() {
 
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [passcode, setPasscode] = useState('');
-  const [authError, setAuthError] = useState('');
+  const [mustChangePassword, setMustChangePassword] = useState<boolean>(false);
+
+  // Login form fields
+  const [username, setUsername] = useState('oumalya');
+  const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Password change fields (mandatory on 1st login)
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [changePassError, setChangePassError] = useState('');
+  const [isSavingPass, setIsSavingPass] = useState(false);
 
   // Navigation tab
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
@@ -112,8 +124,8 @@ export default function AdminPage() {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12); // A5
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
       gain.gain.setValueAtTime(0.2, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
       osc.connect(gain);
@@ -163,14 +175,14 @@ export default function AdminPage() {
 
   // Initial load
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !mustChangePassword) {
       fetchOrders();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, mustChangePassword]);
 
   // Real-time automatic polling every 4.5 seconds
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || mustChangePassword) return;
 
     const interval = setInterval(async () => {
       try {
@@ -198,30 +210,112 @@ export default function AdminPage() {
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, showToast]);
+  }, [isAuthenticated, mustChangePassword, showToast]);
 
-  // Auth Handler
-  const handleLogin = (e: React.FormEvent) => {
+  // Handle Login with Username & Password
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = passcode.trim().toLowerCase();
-    if (clean === 'oumalya' || clean === 'admin' || clean === '2026') {
-      setIsAuthenticated(true);
-      setAuthError('');
-      try {
-        sessionStorage.setItem('oumalya_admin_auth', 'true');
-      } catch {}
-      showToast('Bienvenue sur l\'administration OUMALYA');
-    } else {
-      setAuthError('Code d\'accès incorrect. (Indice : oumalya)');
+    if (!username.trim() || !password.trim()) {
+      setAuthError('Veuillez renseigner votre identifiant et votre mot de passe');
+      return;
+    }
+
+    setIsLoggingIn(true);
+    setAuthError('');
+
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'login',
+          username: username.trim(),
+          password: password.trim()
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setIsAuthenticated(true);
+        if (data.mustChangePassword) {
+          setMustChangePassword(true);
+          showToast('Première connexion : Définissez votre mot de passe');
+        } else {
+          setMustChangePassword(false);
+          try {
+            sessionStorage.setItem('oumalya_admin_auth', 'true');
+          } catch {}
+          showToast('Bienvenue sur l\'administration OUMALYA');
+        }
+      } else {
+        setAuthError(data.error || 'Identifiant ou mot de passe incorrect');
+      }
+    } catch {
+      setAuthError('Erreur de communication avec le serveur');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  // Handle Mandatory First Password Change
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePassError('');
+
+    if (!newPassword || newPassword.length < 5) {
+      setChangePassError('Le mot de passe doit comporter au moins 5 caractères');
+      return;
+    }
+
+    if (newPassword === 'passer') {
+      setChangePassError('Veuillez choisir un mot de passe différent du mot de passe initial "passer"');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setChangePassError('Les deux mots de passe saisis ne correspondent pas');
+      return;
+    }
+
+    setIsSavingPass(true);
+
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'change-password',
+          newPassword: newPassword.trim()
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setMustChangePassword(false);
+        try {
+          sessionStorage.setItem('oumalya_admin_auth', 'true');
+        } catch {}
+        showToast('Nouveau mot de passe enregistré avec succès ! Bienvenue.');
+      } else {
+        setChangePassError(data.error || 'Erreur lors de la modification du mot de passe');
+      }
+    } catch {
+      setChangePassError('Erreur de connexion');
+    } finally {
+      setIsSavingPass(false);
     }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setMustChangePassword(false);
+    setPassword('');
     try {
       sessionStorage.removeItem('oumalya_admin_auth');
     } catch {}
-    showToast('Déconnexion réussie');
+    showToast('Déconnexion effectuée');
   };
 
   // Order Status Update
@@ -490,7 +584,7 @@ export default function AdminPage() {
     );
   }
 
-  // ==================== RENDER LOCK SCREEN ====================
+  // ==================== SCREEN 1: LOGIN FORM ====================
   if (!isAuthenticated) {
     return (
       <div className="oumalya-admin">
@@ -511,55 +605,89 @@ export default function AdminPage() {
               fontWeight: 700,
               letterSpacing: '3px',
               color: 'var(--pink)',
-              marginBottom: '28px'
+              marginBottom: '26px'
             }}>
               ESPACE DE GESTION & DIRECTION
             </div>
 
-            <p style={{ color: 'var(--muted)', fontSize: '13.5px', lineHeight: 1.6, marginBottom: '28px' }}>
-              Portail sécurisé pour la gestion du catalogue, le suivi des commandes WhatsApp et les indicateurs de ventes.
+            <p style={{ color: 'var(--muted)', fontSize: '13.5px', lineHeight: 1.6, marginBottom: '26px' }}>
+              Connectez-vous avec vos identifiants administrateur pour accéder à la gestion de la boutique.
             </p>
 
             <form onSubmit={handleLogin}>
-              <div style={{ position: 'relative', marginBottom: '20px' }}>
+              {/* Username field */}
+              <div style={{ marginBottom: '16px', textAlign: 'left' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
+                  Identifiant (Nom d&apos;utilisateur)
+                </label>
                 <input
-                  type={showPass ? 'text' : 'password'}
-                  placeholder="Entrez votre mot de passe"
-                  value={passcode}
+                  type="text"
+                  placeholder="oumalya"
+                  value={username}
                   onChange={e => {
-                    setPasscode(e.target.value);
+                    setUsername(e.target.value);
                     if (authError) setAuthError('');
                   }}
                   autoFocus
+                  required
                   style={{
                     width: '100%',
-                    padding: '13px 45px 13px 18px',
+                    padding: '13px 18px',
                     borderRadius: '12px',
-                    border: authError ? '1.5px solid #d82b4f' : '1px solid var(--stroke)',
+                    border: '1px solid var(--stroke)',
                     fontSize: '14px',
                     outline: 'none',
                     background: '#fcfafb',
                     boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--muted)',
-                    fontSize: '13px',
-                    padding: '4px'
-                  }}
-                >
-                  {showPass ? 'Masquer' : 'Afficher'}
-                </button>
+              </div>
+
+              {/* Password field */}
+              <div style={{ marginBottom: '20px', textAlign: 'left' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
+                  Mot de passe
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="Entrez votre mot de passe"
+                    value={password}
+                    onChange={e => {
+                      setPassword(e.target.value);
+                      if (authError) setAuthError('');
+                    }}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '13px 45px 13px 18px',
+                      borderRadius: '12px',
+                      border: authError ? '1.5px solid #d82b4f' : '1px solid var(--stroke)',
+                      fontSize: '14px',
+                      outline: 'none',
+                      background: '#fcfafb',
+                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--muted)',
+                      fontSize: '13px',
+                      padding: '4px'
+                    }}
+                  >
+                    {showPass ? 'Masquer' : 'Afficher'}
+                  </button>
+                </div>
               </div>
 
               {authError && (
@@ -579,13 +707,14 @@ export default function AdminPage() {
               <button
                 type="submit"
                 className="btn btn-primary"
+                disabled={isLoggingIn}
                 style={{ width: '100%', padding: '13px', fontSize: '14px', borderRadius: '12px' }}
               >
-                Accéder au tableau de bord
+                {isLoggingIn ? 'Vérification…' : 'Se connecter au tableau de bord'}
               </button>
             </form>
 
-            <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--stroke-light)' }}>
+            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--stroke-light)' }}>
               <Link href="/" style={{ color: 'var(--muted)', fontSize: '12px', textDecoration: 'none' }}>
                 ← Retour à la boutique publique
               </Link>
@@ -596,7 +725,161 @@ export default function AdminPage() {
     );
   }
 
-  // ==================== MAIN DASHBOARD LAYOUT ====================
+  // ==================== SCREEN 2: MANDATORY PASSWORD CHANGE ====================
+  if (isAuthenticated && mustChangePassword) {
+    return (
+      <div className="oumalya-admin">
+        <div className="login-screen">
+          <div className="luxury-login-box" style={{ maxWidth: '480px' }}>
+            <div style={{
+              display: 'inline-block',
+              padding: '4px 12px',
+              borderRadius: '100px',
+              background: '#fef1f5',
+              color: 'var(--pink)',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '1px',
+              marginBottom: '16px',
+              textTransform: 'uppercase'
+            }}>
+              🔐 Première connexion requise
+            </div>
+
+            <div style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: '24px',
+              fontWeight: 700,
+              color: 'var(--ink)',
+              marginBottom: '8px'
+            }}>
+              Changement obligatoire de mot de passe
+            </div>
+
+            <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.6, marginBottom: '24px' }}>
+              Pour des raisons de sécurité, vous vous êtes connecté(e) avec le mot de passe initial (« passer »). <strong>Vous devez obligatoirement définir votre nouveau mot de passe personnel</strong> pour activer votre accès.
+            </p>
+
+            <form onSubmit={handleChangePassword}>
+              {/* New Password */}
+              <div style={{ marginBottom: '16px', textAlign: 'left' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
+                  Nouveau mot de passe *
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    placeholder="Au moins 5 caractères"
+                    value={newPassword}
+                    onChange={e => {
+                      setNewPassword(e.target.value);
+                      if (changePassError) setChangePassError('');
+                    }}
+                    required
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '13px 45px 13px 18px',
+                      borderRadius: '12px',
+                      border: '1px solid var(--stroke)',
+                      fontSize: '14px',
+                      outline: 'none',
+                      background: '#fcfafb'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--muted)',
+                      fontSize: '13px',
+                      padding: '4px'
+                    }}
+                  >
+                    {showNewPass ? 'Masquer' : 'Afficher'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div style={{ marginBottom: '22px', textAlign: 'left' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
+                  Confirmez le nouveau mot de passe *
+                </label>
+                <input
+                  type={showNewPass ? 'text' : 'password'}
+                  placeholder="Répétez le mot de passe"
+                  value={confirmPassword}
+                  onChange={e => {
+                    setConfirmPassword(e.target.value);
+                    if (changePassError) setChangePassError('');
+                  }}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '13px 18px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--stroke)',
+                    fontSize: '14px',
+                    outline: 'none',
+                    background: '#fcfafb'
+                  }}
+                />
+              </div>
+
+              {changePassError && (
+                <div style={{
+                  color: '#d82b4f',
+                  fontSize: '12.5px',
+                  marginBottom: '16px',
+                  background: '#fdf2f4',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  textAlign: 'left'
+                }}>
+                  {changePassError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isSavingPass}
+                style={{ width: '100%', padding: '14px', fontSize: '14px', borderRadius: '12px' }}
+              >
+                {isSavingPass ? 'Enregistrement…' : 'Enregistrer mon nouveau mot de passe'}
+              </button>
+            </form>
+
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--stroke-light)' }}>
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                Annuler et se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==================== SCREEN 3: MAIN DASHBOARD LAYOUT ====================
   return (
     <div className="oumalya-admin">
       {/* SIDEBAR */}
@@ -672,8 +955,8 @@ export default function AdminPage() {
           <div className="user-profile">
             <div className="avatar-circle">O</div>
             <div className="user-meta">
-              <strong>Mme Oumou C.</strong>
-              <small>Directrice · Connectée</small>
+              <strong>Admin Oumalya</strong>
+              <small>Connecté(e)</small>
             </div>
             <button
               onClick={handleLogout}
@@ -787,7 +1070,7 @@ export default function AdminPage() {
 
                           <div className="notif-location">
                             📍 <strong>Lieu :</strong> {o.customer.ville}
-                            {o.customer.adresse ? ` — ${o.customer.adresse}` : ''}
+                            {o.customer.adresse && o.customer.adresse !== o.customer.ville ? ` — ${o.customer.adresse}` : ''}
                           </div>
 
                           <div className="notif-item-bottom">
@@ -1077,8 +1360,12 @@ export default function AdminPage() {
                             <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{o.customer.telephone}</span>
                           </td>
                           <td>
-                            <div style={{ fontSize: '12.5px', fontWeight: 600 }}>{o.customer.ville}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{o.customer.adresse}</div>
+                            <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--ink)' }}>
+                              📍 {o.customer.ville}
+                            </div>
+                            {o.customer.adresse && o.customer.adresse !== o.customer.ville && (
+                              <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{o.customer.adresse}</div>
+                            )}
                           </td>
                           <td>
                             {o.items.map(it => `${it.qty}x ${it.name}`).join(', ')}
@@ -1352,9 +1639,11 @@ export default function AdminPage() {
                           <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--ink)' }}>
                             📍 {o.customer.ville}
                           </div>
-                          <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '2px' }}>
-                            {o.customer.adresse}
-                          </div>
+                          {o.customer.adresse && o.customer.adresse !== o.customer.ville && (
+                            <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '2px' }}>
+                              {o.customer.adresse}
+                            </div>
+                          )}
                           {o.customer.note && (
                             <div style={{ fontSize: '11px', color: '#b78103', background: '#fff8e6', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>
                               Note : {o.customer.note}
@@ -1375,7 +1664,7 @@ export default function AdminPage() {
                             {formatPrice(o.total)}
                           </div>
                           <div style={{ fontSize: '10.5px', color: 'var(--muted)' }}>
-                            dont {formatPrice(o.deliveryFee)} livraison
+                            Frais livr. à convenir
                           </div>
                         </td>
                         <td>
@@ -1462,42 +1751,6 @@ export default function AdminPage() {
                         className="form-input"
                         value={settings.announcement}
                         onChange={e => setSettings({ ...settings, announcement: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="panel-header" style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--stroke-light)' }}>
-                    <h3 className="panel-title">Grille Tarifaire de Livraison (F CFA)</h3>
-                  </div>
-
-                  <div className="form-grid">
-                    <div className="form-field">
-                      <label className="form-label">Dakar Centre & Plateau (F CFA)</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={settings.dakarFee}
-                        onChange={e => setSettings({ ...settings, dakarFee: Number(e.target.value) || 0 })}
-                      />
-                    </div>
-
-                    <div className="form-field">
-                      <label className="form-label">Banlieue (Pikine, Guédiawaye, Rufisque)</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={settings.banlieueFee}
-                        onChange={e => setSettings({ ...settings, banlieueFee: Number(e.target.value) || 0 })}
-                      />
-                    </div>
-
-                    <div className="form-field full">
-                      <label className="form-label">Régions (Thiès, Saint-Louis, Mbour, etc.)</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={settings.regionFee}
-                        onChange={e => setSettings({ ...settings, regionFee: Number(e.target.value) || 0 })}
                       />
                     </div>
                   </div>
