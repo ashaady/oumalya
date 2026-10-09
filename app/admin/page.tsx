@@ -5,6 +5,36 @@ import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { Product, formatPrice } from '@/data/products';
 
+export interface OrderItem {
+  id: string;
+  name: string;
+  size: string;
+  qty: number;
+  price: number;
+  img: string;
+}
+
+export interface Order {
+  id: string;
+  createdAt: string;
+  customer: {
+    prenom: string;
+    nom: string;
+    telephone: string;
+    ville: string;
+    adresse: string;
+    livraison: string;
+    note?: string;
+  };
+  items: OrderItem[];
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
+}
+
+type TabKey = 'dashboard' | 'products' | 'orders' | 'settings';
+
 export default function AdminPage() {
   const {
     products,
@@ -19,36 +49,54 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [passcode, setPasscode] = useState('');
   const [authError, setAuthError] = useState('');
+  const [showPass, setShowPass] = useState(false);
 
-  // Filtering & search
-  const [search, setSearch] = useState('');
+  // Navigation tab
+  const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Orders state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // Product Filtering & Search
+  const [productSearch, setProductSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'abayas' | 'crocs'>('all');
 
-  // Modal states
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  // Order Filtering & Search
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled'>('all');
 
-  // Delete confirmation
-  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
-
-  // Uploading state
+  // Product Modal State
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [productModalMode, setProductModalMode] = useState<'create' | 'edit'>('create');
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
-  // Form fields
-  const [formData, setFormData] = useState({
+  // Product Form Data
+  const [productForm, setProductForm] = useState({
     id: '',
     name: '',
     category: 'abayas' as 'abayas' | 'crocs',
     price: 25000,
-    color: 'Noir',
+    color: 'Noir Ébène',
     badge: 'Nouveauté',
     sizesText: 'S, M, L, XL',
-    desc: '',
-    detail: '',
+    desc: 'Confection artisanale haut de gamme avec tissu crêpe fluide.',
+    detail: 'Matière respirante, finitions perlées à la main. Lavage délicat recommandé.',
     img: '/images/hero-abaya-pink.jpg'
+  });
+
+  // Settings State
+  const [settings, setSettings] = useState({
+    storePhone: '77 123 45 67',
+    storeEmail: 'contact@oumalya.sn',
+    dakarFee: 2000,
+    banlieueFee: 3000,
+    regionFee: 5000,
+    announcement: 'Livraison express à Dakar en 24h & expédition sécurisée dans toutes les régions du Sénégal'
   });
 
   // Check existing session
@@ -58,21 +106,51 @@ export default function AdminPage() {
       if (savedAuth === 'true') {
         setIsAuthenticated(true);
       }
+
+      const savedSettings = localStorage.getItem('oumalya_store_settings');
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      }
     } catch {}
   }, []);
 
+  // Fetch orders from API
+  const fetchOrders = async () => {
+    setIsLoadingOrders(true);
+    try {
+      const res = await fetch('/api/orders');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setOrders(data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchOrders();
+    }
+  }, [isAuthenticated]);
+
+  // Auth Handler
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default passcode: "oumalya" or "admin"
-    if (passcode.trim().toLowerCase() === 'oumalya' || passcode.trim() === 'admin' || passcode.trim() === '2026') {
+    const clean = passcode.trim().toLowerCase();
+    if (clean === 'oumalya' || clean === 'admin' || clean === '2026') {
       setIsAuthenticated(true);
       setAuthError('');
       try {
         sessionStorage.setItem('oumalya_admin_auth', 'true');
       } catch {}
-      showToast('Connexion à l\'administration réussie');
+      showToast('Bienvenue sur l\'administration OUMALYA');
     } else {
-      setAuthError('Code d\'accès incorrect. (Indice par défaut : "oumalya")');
+      setAuthError('Code d\'accès incorrect. (Indice : oumalya)');
     }
   };
 
@@ -81,45 +159,80 @@ export default function AdminPage() {
     try {
       sessionStorage.removeItem('oumalya_admin_auth');
     } catch {}
-    showToast('Déconnexion effectuée');
+    showToast('Déconnexion réussie');
   };
 
-  // Open Create Modal
-  const openCreateModal = () => {
-    setModalMode('create');
-    setEditingProduct(null);
-    setFormData({
+  // Order Status Update
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId, status: newStatus })
+      });
+      if (res.ok) {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+        }
+        showToast(`Statut mis à jour : ${getStatusLabel(newStatus)}`);
+      } else {
+        showToast('Erreur lors de la mise à jour du statut');
+      }
+    } catch {
+      showToast('Erreur réseau');
+    }
+  };
+
+  // Open WhatsApp to Contact Customer
+  const openWhatsAppCustomer = (order: Order) => {
+    const cleanPhone = order.customer.telephone.replace(/[^0-9]/g, '');
+    const itemsSummary = order.items.map(it => `${it.qty}x ${it.name} (${it.size})`).join(', ');
+    const message = `Bonjour Madame / Monsieur ${order.customer.prenom} ${order.customer.nom},\n\n` +
+      `C'est le service client OUMALYA CLOTHING. Nous vous contactons concernant votre commande #${order.id} :\n` +
+      `• Articles : ${itemsSummary}\n` +
+      `• Montant total : ${formatPrice(order.total)}\n` +
+      `• Adresse de livraison : ${order.customer.adresse}, ${order.customer.ville}\n\n` +
+      `Notre équipe prépare votre colis avec le plus grand soin. Êtes-vous disponible pour la livraison ? ✨`;
+
+    const fullPhone = cleanPhone.startsWith('221') ? cleanPhone : `221${cleanPhone}`;
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  // Open Product Modal for Creation
+  const openCreateProduct = () => {
+    setProductModalMode('create');
+    setProductForm({
       id: '',
       name: '',
       category: 'abayas',
       price: 25000,
-      color: 'Noir',
+      color: 'Noir Ébène',
       badge: 'Nouveauté',
       sizesText: 'S, M, L, XL',
-      desc: '',
+      desc: 'Pièce exclusive de la nouvelle collection OUMALYA avec finitions faites à la main.',
       detail: 'Photographie illustrative. Matière, coupe exacte et tailles disponibles à confirmer avant la commande.',
-      img: '/images/category-abayas.jpg'
+      img: '/images/hero-abaya-pink.jpg'
     });
-    setIsModalOpen(true);
+    setIsProductModalOpen(true);
   };
 
-  // Open Edit Modal
-  const openEditModal = (p: Product) => {
-    setModalMode('edit');
-    setEditingProduct(p);
-    setFormData({
+  // Open Product Modal for Edit
+  const openEditProduct = (p: Product) => {
+    setProductModalMode('edit');
+    setProductForm({
       id: p.id,
       name: p.name,
       category: p.category,
       price: p.price,
-      color: p.color,
+      color: p.color || 'Noir',
       badge: p.badge || p.badges || 'Nouveauté',
       sizesText: Array.isArray(p.sizes) ? p.sizes.join(', ') : '',
       desc: p.desc || p.description || '',
       detail: p.detail || '',
       img: p.img || p.image || '/images/hero-abaya-pink.jpg'
     });
-    setIsModalOpen(true);
+    setIsProductModalOpen(true);
   };
 
   // Handle Image Upload
@@ -139,74 +252,107 @@ export default function AdminPage() {
 
       const json = await res.json();
       if (json.success && json.url) {
-        setFormData(prev => ({ ...prev, img: json.url }));
+        setProductForm(prev => ({ ...prev, img: json.url }));
         showToast('Image téléchargée avec succès !');
       } else {
         showToast(json.error || 'Erreur lors du téléchargement');
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Échec de l\'envoi du fichier');
+    } catch {
+      showToast('Échec du téléversement de l\'image');
     } finally {
       setIsUploading(false);
     }
   };
 
-  // Save product
+  // Save Product
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
+    if (!productForm.name.trim()) {
       showToast('Veuillez renseigner le nom du produit');
       return;
     }
 
     setIsSaving(true);
-    const parsedSizes = formData.sizesText
+    const parsedSizes = productForm.sizesText
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
 
-    const productPayload = {
-      id: formData.id,
-      name: formData.name.trim(),
-      category: formData.category,
-      cat: formData.category,
-      label: formData.category === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION',
-      catLabel: formData.category === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION',
-      price: Number(formData.price) || 0,
-      color: formData.color.trim() || 'Noir',
-      badge: formData.badge,
-      badges: formData.badge,
-      sizes: parsedSizes.length ? parsedSizes : (formData.category === 'crocs' ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL']),
-      desc: formData.desc.trim(),
-      description: formData.desc.trim(),
-      detail: formData.detail.trim(),
-      img: formData.img,
-      image: formData.img
+    const payload = {
+      id: productForm.id,
+      name: productForm.name.trim(),
+      category: productForm.category,
+      cat: productForm.category,
+      label: productForm.category === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION',
+      catLabel: productForm.category === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION',
+      price: Number(productForm.price) || 0,
+      color: productForm.color.trim() || 'Noir',
+      badge: productForm.badge,
+      badges: productForm.badge,
+      sizes: parsedSizes.length ? parsedSizes : (productForm.category === 'crocs' ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL']),
+      desc: productForm.desc.trim(),
+      description: productForm.desc.trim(),
+      detail: productForm.detail.trim(),
+      img: productForm.img,
+      image: productForm.img
     };
 
-    if (modalMode === 'create') {
-      await addProduct(productPayload);
+    if (productModalMode === 'create') {
+      await addProduct(payload);
     } else {
-      await updateProduct(productPayload as Product);
+      await updateProduct(payload as Product);
     }
 
     setIsSaving(false);
-    setIsModalOpen(false);
+    setIsProductModalOpen(false);
   };
 
-  // Confirm delete
+  // Delete Product
   const handleConfirmDelete = async () => {
     if (!deletingProduct) return;
     await deleteProduct(deletingProduct.id);
     setDeletingProduct(null);
   };
 
-  // Filtered products list
-  const filteredList = useMemo(() => {
+  // Save Settings
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      localStorage.setItem('oumalya_store_settings', JSON.stringify(settings));
+      showToast('Paramètres de la boutique enregistrés avec succès');
+    } catch {
+      showToast('Erreur lors de la sauvegarde');
+    }
+  };
+
+  // Computed KPIs & Stats
+  const stats = useMemo(() => {
+    const totalOrders = orders.length;
+    const pendingOrders = orders.filter(o => o.status === 'pending').length;
+    const totalRevenue = orders
+      .filter(o => o.status !== 'cancelled')
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+    const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+
+    const abayasCount = products.filter(p => p.category === 'abayas').length;
+    const crocsCount = products.filter(p => p.category === 'crocs').length;
+
+    return {
+      totalOrders,
+      pendingOrders,
+      totalRevenue,
+      avgOrderValue,
+      totalProducts: products.length,
+      abayasCount,
+      crocsCount
+    };
+  }, [orders, products]);
+
+  // Filtered Products
+  const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const matchCat = categoryFilter === 'all' || p.category === categoryFilter;
-      const q = search.toLowerCase().trim();
+      const q = productSearch.toLowerCase().trim();
       const matchSearch =
         !q ||
         p.name.toLowerCase().includes(q) ||
@@ -215,508 +361,1211 @@ export default function AdminPage() {
         p.id.toLowerCase().includes(q);
       return matchCat && matchSearch;
     });
-  }, [products, categoryFilter, search]);
+  }, [products, categoryFilter, productSearch]);
 
-  // Statistics
-  const stats = useMemo(() => {
-    const total = products.length;
-    const abayas = products.filter(p => p.category === 'abayas').length;
-    const crocs = products.filter(p => p.category === 'crocs').length;
-    const avgPrice = total > 0 ? Math.round(products.reduce((acc, p) => acc + p.price, 0) / total) : 0;
-    return { total, abayas, crocs, avgPrice };
-  }, [products]);
+  // Filtered Orders
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      const matchStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
+      const q = orderSearch.toLowerCase().trim();
+      const fullName = `${o.customer.prenom} ${o.customer.nom}`.toLowerCase();
+      const matchSearch =
+        !q ||
+        o.id.toLowerCase().includes(q) ||
+        fullName.includes(q) ||
+        o.customer.telephone.includes(q) ||
+        o.customer.ville.toLowerCase().includes(q);
+      return matchStatus && matchSearch;
+    });
+  }, [orders, orderStatusFilter, orderSearch]);
 
-  // Lock Screen
+  // Status Helpers
+  function getStatusLabel(status: Order['status']) {
+    switch (status) {
+      case 'pending': return 'En attente';
+      case 'confirmed': return 'Confirmée';
+      case 'shipping': return 'En livraison';
+      case 'delivered': return 'Livrée';
+      case 'cancelled': return 'Annulée';
+    }
+  }
+
+  function getStatusBadge(status: Order['status']) {
+    return (
+      <span className={`status-pill ${status}`}>
+        ● {getStatusLabel(status)}
+      </span>
+    );
+  }
+
+  // ==================== RENDER LOCK SCREEN ====================
   if (!isAuthenticated) {
     return (
       <div className="oumalya-admin">
-        <header className="admin-header">
-          <div className="admin-header-inner">
-            <div className="admin-brand">
-              <span className="admin-brand-title">OUMALYA CLOTHING</span>
-              <span className="admin-badge">Administration</span>
+        <div className="login-screen">
+          <div className="luxury-login-box">
+            <div style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: '28px',
+              fontWeight: 700,
+              letterSpacing: '5px',
+              color: 'var(--ink)',
+              marginBottom: '6px'
+            }}>
+              OUMALYA
             </div>
-            <Link href="/" className="btn btn-outline btn-sm">
-              ← Retour au site
-            </Link>
-          </div>
-        </header>
+            <div style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '3px',
+              color: 'var(--pink)',
+              marginBottom: '28px'
+            }}>
+              ESPACE DE GESTION & DIRECTION
+            </div>
 
-        <main className="admin-container">
-          <div className="login-card">
-            <div className="login-logo">OUMALYA</div>
-            <div className="login-sub">GESTION DE LA BOUTIQUE</div>
-            <p style={{ color: 'var(--muted)', fontSize: '13px', marginBottom: '24px' }}>
-              Veuillez entrer votre code d&apos;accès administrateur pour gérer le catalogue et les produits.
+            <p style={{ color: 'var(--muted)', fontSize: '13.5px', lineHeight: 1.6, marginBottom: '28px' }}>
+              Portail sécurisé pour la gestion du catalogue, le suivi des commandes WhatsApp et les indicateurs de ventes.
             </p>
 
             <form onSubmit={handleLogin}>
-              <div className="form-group">
+              <div style={{ position: 'relative', marginBottom: '20px' }}>
                 <input
-                  type="password"
-                  className="form-input"
-                  placeholder="Code d'accès (ex : oumalya)"
+                  type={showPass ? 'text' : 'password'}
+                  placeholder="Entrez votre mot de passe"
                   value={passcode}
-                  onChange={e => setPasscode(e.target.value)}
+                  onChange={e => {
+                    setPasscode(e.target.value);
+                    if (authError) setAuthError('');
+                  }}
                   autoFocus
+                  style={{
+                    width: '100%',
+                    padding: '13px 45px 13px 18px',
+                    borderRadius: '12px',
+                    border: authError ? '1.5px solid #d82b4f' : '1px solid var(--stroke)',
+                    fontSize: '14px',
+                    outline: 'none',
+                    background: '#fcfafb',
+                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                  }}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--muted)',
+                    fontSize: '13px',
+                    padding: '4px'
+                  }}
+                >
+                  {showPass ? 'Masquer' : 'Afficher'}
+                </button>
               </div>
 
               {authError && (
-                <p style={{ color: '#d82b4f', fontSize: '12px', margin: '-8px 0 16px', fontWeight: 600 }}>
+                <div style={{
+                  color: '#d82b4f',
+                  fontSize: '12.5px',
+                  marginBottom: '16px',
+                  background: '#fdf2f4',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  textAlign: 'left'
+                }}>
                   {authError}
-                </p>
+                </div>
               )}
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                Déverrouiller l&apos;espace admin
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '13px', fontSize: '14px', borderRadius: '12px' }}
+              >
+                Accéder au tableau de bord
               </button>
             </form>
+
+            <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--stroke-light)' }}>
+              <Link href="/" style={{ color: 'var(--muted)', fontSize: '12px', textDecoration: 'none' }}>
+                ← Retour à la boutique publique
+              </Link>
+            </div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
+  // ==================== MAIN DASHBOARD LAYOUT ====================
   return (
     <div className="oumalya-admin">
-      {/* Admin Header */}
-      <header className="admin-header">
-        <div className="admin-header-inner">
-          <div className="admin-brand">
-            <span className="admin-brand-title">OUMALYA CLOTHING</span>
-            <span className="admin-badge">Admin</span>
+      {/* SIDEBAR */}
+      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-brand">
+            <span className="brand-title">OUMALYA</span>
+            <span className="brand-sub">HAUTE COUTURE & BOUTIQUE</span>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          <button
+            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+            Tableau de bord
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'products' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('products'); setSidebarOpen(false); }}
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            Catalogue Produits
+            <span className="nav-badge">{products.length}</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('orders'); setSidebarOpen(false); }}
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            Commandes
+            {stats.pendingOrders > 0 && (
+              <span className="nav-badge" style={{ background: '#d82b4f', color: '#fff' }}>
+                {stats.pendingOrders}
+              </span>
+            )}
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Paramètres Boutique
+          </button>
+
+          <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
+            <Link
+              href="/"
+              target="_blank"
+              className="btn btn-outline"
+              style={{ width: '100%', fontSize: '12px', justifyContent: 'center' }}
+            >
+              Voir la boutique ↗
+            </Link>
+          </div>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="user-profile">
+            <div className="avatar-circle">O</div>
+            <div className="user-meta">
+              <strong>Mme Oumou C.</strong>
+              <small>Directrice · Connectée</small>
+            </div>
+            <button
+              onClick={handleLogout}
+              title="Déconnexion"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--muted)',
+                padding: '4px',
+                fontSize: '12px'
+              }}
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="admin-main-wrap">
+        {/* TOPBAR */}
+        <header className="admin-topbar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                display: 'inline-flex',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px'
+              }}
+            >
+              <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <h1 className="topbar-title">
+              {activeTab === 'dashboard' && 'Tableau de bord exécutif'}
+              {activeTab === 'products' && 'Gestion du catalogue produits'}
+              {activeTab === 'orders' && 'Commandes & Suivi livraisons'}
+              {activeTab === 'settings' && 'Configuration de la boutique'}
+            </h1>
           </div>
 
-          <div className="admin-nav-actions">
-            <Link href="/boutique" className="btn btn-outline btn-sm" target="_blank">
-              👁️ Voir la boutique
-            </Link>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                if (window.confirm('Voulez-vous restaurer les 4 produits de démonstration d\'origine ?')) {
-                  resetProducts();
-                }
-              }}
-              title="Restaurer les produits par défaut"
-            >
-              🔄 Réinitialiser démo
-            </button>
-            <button type="button" className="btn btn-outline btn-sm" onClick={handleLogout}>
+          <div className="topbar-actions">
+            {activeTab === 'products' && (
+              <button onClick={openCreateProduct} className="btn btn-primary">
+                + Ajouter un produit
+              </button>
+            )}
+
+            {activeTab === 'orders' && (
+              <button onClick={fetchOrders} className="btn btn-outline" disabled={isLoadingOrders}>
+                {isLoadingOrders ? 'Actualisation...' : '↻ Rafraîchir'}
+              </button>
+            )}
+
+            <button onClick={handleLogout} className="btn btn-outline btn-sm">
               Déconnexion
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Container */}
-      <main className="admin-container">
-        {/* Dashboard Hero */}
-        <div className="dashboard-hero">
-          <div>
-            <h1>Gestion du Catalogue</h1>
-            <p>Ajoutez, modifiez ou mettez à jour les photos et prix de vos produits en temps réel.</p>
-          </div>
-          <button type="button" className="btn btn-primary" onClick={openCreateModal}>
-            <span style={{ fontSize: '16px', fontWeight: 'bold' }}>+</span> Ajouter un produit
-          </button>
-        </div>
+        {/* CONTENT TABS */}
+        <main className="admin-content-area">
+          {/* TAB 1: DASHBOARD */}
+          {activeTab === 'dashboard' && (
+            <div>
+              {/* KPI Cards */}
+              <div className="kpi-grid">
+                <div className="kpi-card">
+                  <div className="kpi-header">
+                    <span className="kpi-label">Chiffre d&apos;Affaires</span>
+                    <span className="kpi-icon">💰</span>
+                  </div>
+                  <div className="kpi-value">{formatPrice(stats.totalRevenue)}</div>
+                  <div className="kpi-sub">
+                    <span className="kpi-trend">↑ En hausse</span> · Total cumulé
+                  </div>
+                </div>
 
-        {/* Statistics Grid */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <small>Total Produits</small>
-            <div className="stat-val accent">{stats.total}</div>
-          </div>
-          <div className="stat-card">
-            <small>Collection Abayas</small>
-            <div className="stat-val">{stats.abayas}</div>
-          </div>
-          <div className="stat-card">
-            <small>Collection Crocs</small>
-            <div className="stat-val">{stats.crocs}</div>
-          </div>
-          <div className="stat-card">
-            <small>Prix Moyen</small>
-            <div className="stat-val">{formatPrice(stats.avgPrice)}</div>
-          </div>
-        </div>
-
-        {/* Toolbar */}
-        <div className="catalog-toolbar">
-          <div className="search-input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              type="search"
-              className="search-input"
-              placeholder="Rechercher par nom, couleur, prix..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div className="filter-tabs">
-            <button
-              type="button"
-              className={`filter-tab ${categoryFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setCategoryFilter('all')}
-            >
-              Tous ({products.length})
-            </button>
-            <button
-              type="button"
-              className={`filter-tab ${categoryFilter === 'abayas' ? 'active' : ''}`}
-              onClick={() => setCategoryFilter('abayas')}
-            >
-              Abayas ({stats.abayas})
-            </button>
-            <button
-              type="button"
-              className={`filter-tab ${categoryFilter === 'crocs' ? 'active' : ''}`}
-              onClick={() => setCategoryFilter('crocs')}
-            >
-              Crocs ({stats.crocs})
-            </button>
-          </div>
-        </div>
-
-        {/* Products Table */}
-        <div className="products-table-wrap">
-          <table className="products-table">
-            <thead>
-              <tr>
-                <th>Produit & Photo</th>
-                <th>Catégorie</th>
-                <th>Prix</th>
-                <th>Pointures / Tailles</th>
-                <th>Badge</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredList.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
-                    Aucun produit trouvé dans cette sélection.
-                  </td>
-                </tr>
-              ) : (
-                filteredList.map(p => (
-                  <tr key={p.id}>
-                    <td>
-                      <div className="product-thumb-cell">
-                        <img
-                          src={p.img || p.image}
-                          alt={p.name}
-                          className="table-thumb"
-                          onError={e => {
-                            (e.target as HTMLImageElement).src = '/images/hero-abaya-pink.jpg';
-                          }}
-                        />
-                        <div className="table-product-info">
-                          <strong>{p.name}</strong>
-                          <small>Couleur : {p.color} · Réf : {p.id}</small>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`category-pill ${p.category}`}>
-                        {p.category === 'crocs' ? 'Crocs' : 'Abaya'}
+                <div className="kpi-card">
+                  <div className="kpi-header">
+                    <span className="kpi-label">Commandes</span>
+                    <span className="kpi-icon">📦</span>
+                  </div>
+                  <div className="kpi-value">{stats.totalOrders}</div>
+                  <div className="kpi-sub">
+                    {stats.pendingOrders > 0 ? (
+                      <span style={{ color: '#d82b4f', fontWeight: 700 }}>
+                        {stats.pendingOrders} à traiter
                       </span>
-                    </td>
-                    <td>
-                      <strong style={{ color: 'var(--pink)', fontSize: '14px' }}>
-                        {formatPrice(p.price)}
-                      </strong>
-                    </td>
-                    <td>
-                      <div className="size-tags">
-                        {Array.isArray(p.sizes) ? (
-                          p.sizes.map(s => (
-                            <span key={s} className="size-tag">
-                              {s}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="size-tag">Standard</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="tag-badge">{p.badge || p.badges || '—'}</span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div className="table-actions" style={{ justifyContent: 'flex-end' }}>
-                        <Link
-                          href={`/produit?id=${p.id}`}
-                          className="btn btn-outline btn-sm btn-icon"
-                          title="Voir la fiche produit"
-                          target="_blank"
-                        >
-                          👁️
-                        </Link>
-                        <button
-                          type="button"
-                          className="btn btn-outline btn-sm"
-                          onClick={() => openEditModal(p)}
-                        >
-                          ✏️ Modifier
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-sm btn-icon"
-                          onClick={() => setDeletingProduct(p)}
-                          title="Supprimer ce produit"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </main>
+                    ) : (
+                      'Toutes traitées'
+                    )}
+                  </div>
+                </div>
 
-      {/* Modal: Create / Edit Product */}
-      {isModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{modalMode === 'create' ? 'Ajouter un nouveau produit' : `Modifier : ${editingProduct?.name}`}</h2>
+                <div className="kpi-card">
+                  <div className="kpi-header">
+                    <span className="kpi-label">Articles en vente</span>
+                    <span className="kpi-icon">👗</span>
+                  </div>
+                  <div className="kpi-value">{stats.totalProducts}</div>
+                  <div className="kpi-sub">
+                    {stats.abayasCount} Abayas · {stats.crocsCount} Crocs
+                  </div>
+                </div>
+
+                <div className="kpi-card">
+                  <div className="kpi-header">
+                    <span className="kpi-label">Panier Moyen</span>
+                    <span className="kpi-icon">✨</span>
+                  </div>
+                  <div className="kpi-value">{formatPrice(stats.avgOrderValue)}</div>
+                  <div className="kpi-sub">Par commande client</div>
+                </div>
+              </div>
+
+              {/* Grid: Revenue Chart + Category Breakdown */}
+              <div className="dashboard-grid">
+                {/* SVG Curve Chart */}
+                <div className="panel-card">
+                  <div className="panel-header">
+                    <div>
+                      <h3 className="panel-title">Tendance des Ventes (F CFA)</h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
+                        Progression estimée des ventes sur la semaine écoulée
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--pink)' }}>
+                      Derniers 7 jours
+                    </span>
+                  </div>
+
+                  <div className="chart-wrap">
+                    <svg className="chart-svg" viewBox="0 0 600 200" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#eb5c8e" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#eb5c8e" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Horizontal Grid lines */}
+                      <line x1="0" y1="50" x2="600" y2="50" stroke="#f2ecee" strokeDasharray="4" />
+                      <line x1="0" y1="100" x2="600" y2="100" stroke="#f2ecee" strokeDasharray="4" />
+                      <line x1="0" y1="150" x2="600" y2="150" stroke="#f2ecee" strokeDasharray="4" />
+
+                      {/* Area Fill */}
+                      <polygon
+                        className="chart-area"
+                        points="20,160 110,130 200,140 290,90 380,110 470,60 560,40 560,190 20,190"
+                      />
+
+                      {/* Smooth Line */}
+                      <polyline
+                        className="chart-line"
+                        points="20,160 110,130 200,140 290,90 380,110 470,60 560,40"
+                      />
+
+                      {/* Data Dots */}
+                      <circle cx="20" cy="160" className="chart-dot" />
+                      <circle cx="110" cy="130" className="chart-dot" />
+                      <circle cx="200" cy="140" className="chart-dot" />
+                      <circle cx="290" cy="90" className="chart-dot" />
+                      <circle cx="380" cy="110" className="chart-dot" />
+                      <circle cx="470" cy="60" className="chart-dot" />
+                      <circle cx="560" cy="40" className="chart-dot" />
+                    </svg>
+
+                    <div className="chart-labels">
+                      <span>Lun</span>
+                      <span>Mar</span>
+                      <span>Mer</span>
+                      <span>Jeu</span>
+                      <span>Ven</span>
+                      <span>Sam</span>
+                      <span>Dim</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Categories & Fast Actions */}
+                <div className="panel-card">
+                  <div className="panel-header">
+                    <h3 className="panel-title">Répartition Collections</h3>
+                  </div>
+
+                  <div className="progress-row">
+                    <div className="progress-info">
+                      <span>Abayas & Hijabs</span>
+                      <span>{stats.abayasCount} réf. ({Math.round((stats.abayasCount / Math.max(1, stats.totalProducts)) * 100)}%)</span>
+                    </div>
+                    <div className="progress-track">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${(stats.abayasCount / Math.max(1, stats.totalProducts)) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="progress-row">
+                    <div className="progress-info">
+                      <span>Crocs Customisées</span>
+                      <span>{stats.crocsCount} réf. ({Math.round((stats.crocsCount / Math.max(1, stats.totalProducts)) * 100)}%)</span>
+                    </div>
+                    <div className="progress-track">
+                      <div
+                        className="progress-fill crocs"
+                        style={{ width: `${(stats.crocsCount / Math.max(1, stats.totalProducts)) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--stroke-light)' }}>
+                    <h4 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 12px' }}>
+                      Raccourcis Directs
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <button
+                        onClick={openCreateProduct}
+                        className="btn btn-outline"
+                        style={{ justifyContent: 'flex-start', fontSize: '12px' }}
+                      >
+                        + Créer un nouveau produit
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('orders')}
+                        className="btn btn-outline"
+                        style={{ justifyContent: 'flex-start', fontSize: '12px' }}
+                      >
+                        📦 Voir toutes les commandes ({stats.totalOrders})
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('settings')}
+                        className="btn btn-outline"
+                        style={{ justifyContent: 'flex-start', fontSize: '12px' }}
+                      >
+                        ⚙️ Modifier les tarifs de livraison
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Orders Overview */}
+              <div className="panel-card">
+                <div className="panel-header">
+                  <div>
+                    <h3 className="panel-title">Dernières Commandes Clients</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
+                      Accédez aux coordonnées et contactez les clientes en un clic sur WhatsApp
+                    </p>
+                  </div>
+                  <button onClick={() => setActiveTab('orders')} className="btn btn-outline btn-sm">
+                    Gérer toutes les commandes →
+                  </button>
+                </div>
+
+                <div className="data-table-card" style={{ boxShadow: 'none', border: 'none' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>N° Commande</th>
+                        <th>Cliente</th>
+                        <th>Téléphone</th>
+                        <th>Articles</th>
+                        <th>Total</th>
+                        <th>Statut</th>
+                        <th style={{ textAlign: 'right' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.slice(0, 5).map(o => (
+                        <tr key={o.id}>
+                          <td>
+                            <strong>{o.id}</strong>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                              {new Date(o.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                            </div>
+                          </td>
+                          <td>
+                            <strong>{o.customer.prenom} {o.customer.nom}</strong>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{o.customer.ville}</div>
+                          </td>
+                          <td>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{o.customer.telephone}</span>
+                          </td>
+                          <td>
+                            {o.items.map(it => `${it.qty}x ${it.name}`).join(', ')}
+                          </td>
+                          <td>
+                            <strong style={{ color: 'var(--pink)' }}>{formatPrice(o.total)}</strong>
+                          </td>
+                          <td>
+                            {getStatusBadge(o.status)}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              onClick={() => openWhatsAppCustomer(o)}
+                              className="btn btn-success btn-sm"
+                              title="Ouvrir WhatsApp avec message personnalisé"
+                            >
+                              WhatsApp
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {orders.length === 0 && (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: 'var(--muted)' }}>
+                            Aucune commande enregistrée pour le moment.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: PRODUCTS */}
+          {activeTab === 'products' && (
+            <div>
+              {/* Toolbar */}
+              <div className="toolbar-card">
+                <div className="search-box">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Rechercher par nom, couleur, prix..."
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                  />
+                </div>
+
+                <div className="filter-pills">
+                  <button
+                    className={`filter-pill ${categoryFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setCategoryFilter('all')}
+                  >
+                    Tous ({products.length})
+                  </button>
+                  <button
+                    className={`filter-pill ${categoryFilter === 'abayas' ? 'active' : ''}`}
+                    onClick={() => setCategoryFilter('abayas')}
+                  >
+                    Abayas ({products.filter(p => p.category === 'abayas').length})
+                  </button>
+                  <button
+                    className={`filter-pill ${categoryFilter === 'crocs' ? 'active' : ''}`}
+                    onClick={() => setCategoryFilter('crocs')}
+                  >
+                    Crocs ({products.filter(p => p.category === 'crocs').length})
+                  </button>
+                </div>
+
+                <button onClick={openCreateProduct} className="btn btn-primary">
+                  + Ajouter un produit
+                </button>
+              </div>
+
+              {/* Products Table */}
+              <div className="data-table-card">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Produit</th>
+                      <th>Catégorie</th>
+                      <th>Prix unitaire</th>
+                      <th>Couleur</th>
+                      <th>Tailles</th>
+                      <th>Badge</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.map(p => (
+                      <tr key={p.id}>
+                        <td>
+                          <div className="product-cell">
+                            <img src={p.img || p.image} alt={p.name} className="product-thumb" />
+                            <div>
+                              <strong style={{ display: 'block', fontSize: '13.5px' }}>{p.name}</strong>
+                              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>ID: {p.id}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`category-tag ${p.category}`}>
+                            {p.category === 'crocs' ? 'Crocs' : 'Abaya'}
+                          </span>
+                        </td>
+                        <td>
+                          <strong style={{ color: 'var(--pink)', fontSize: '14px' }}>
+                            {formatPrice(p.price)}
+                          </strong>
+                        </td>
+                        <td>{p.color || 'Noir'}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            {Array.isArray(p.sizes) ? p.sizes.map(s => (
+                              <span
+                                key={s}
+                                style={{
+                                  fontSize: '10.5px',
+                                  padding: '2px 6px',
+                                  background: '#f2ecee',
+                                  borderRadius: '4px',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {s}
+                              </span>
+                            )) : 'Standard'}
+                          </div>
+                        </td>
+                        <td>
+                          {p.badge || p.badges ? (
+                            <span style={{
+                              fontSize: '11px',
+                              padding: '2px 8px',
+                              background: '#fef1f5',
+                              color: 'var(--pink)',
+                              borderRadius: '100px',
+                              fontWeight: 700
+                            }}>
+                              {p.badge || p.badges}
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                            <button
+                              onClick={() => openEditProduct(p)}
+                              className="btn btn-outline btn-sm"
+                              title="Modifier la fiche produit"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              onClick={() => setDeletingProduct(p)}
+                              className="btn btn-danger btn-sm"
+                              title="Supprimer définitivement"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredProducts.length === 0 && (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
+                          Aucun produit ne correspond à votre recherche.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: ORDERS */}
+          {activeTab === 'orders' && (
+            <div>
+              {/* Orders Toolbar */}
+              <div className="toolbar-card">
+                <div className="search-box">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Rechercher par cliente, téléphone, ville..."
+                    value={orderSearch}
+                    onChange={e => setOrderSearch(e.target.value)}
+                  />
+                </div>
+
+                <div className="filter-pills">
+                  <button
+                    className={`filter-pill ${orderStatusFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setOrderStatusFilter('all')}
+                  >
+                    Toutes ({orders.length})
+                  </button>
+                  <button
+                    className={`filter-pill ${orderStatusFilter === 'pending' ? 'active' : ''}`}
+                    onClick={() => setOrderStatusFilter('pending')}
+                  >
+                    En attente ({orders.filter(o => o.status === 'pending').length})
+                  </button>
+                  <button
+                    className={`filter-pill ${orderStatusFilter === 'confirmed' ? 'active' : ''}`}
+                    onClick={() => setOrderStatusFilter('confirmed')}
+                  >
+                    Confirmées ({orders.filter(o => o.status === 'confirmed').length})
+                  </button>
+                  <button
+                    className={`filter-pill ${orderStatusFilter === 'shipping' ? 'active' : ''}`}
+                    onClick={() => setOrderStatusFilter('shipping')}
+                  >
+                    En livraison ({orders.filter(o => o.status === 'shipping').length})
+                  </button>
+                  <button
+                    className={`filter-pill ${orderStatusFilter === 'delivered' ? 'active' : ''}`}
+                    onClick={() => setOrderStatusFilter('delivered')}
+                  >
+                    Livrées ({orders.filter(o => o.status === 'delivered').length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Orders Table */}
+              <div className="data-table-card">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Réf. Commande</th>
+                      <th>Date</th>
+                      <th>Cliente & Contact</th>
+                      <th>Adresse de livraison</th>
+                      <th>Articles commandés</th>
+                      <th>Total</th>
+                      <th>Statut</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map(o => (
+                      <tr key={o.id}>
+                        <td>
+                          <strong>{o.id}</strong>
+                        </td>
+                        <td style={{ fontSize: '12px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                          {new Date(o.createdAt).toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td>
+                          <strong>{o.customer.prenom} {o.customer.nom}</strong>
+                          <div style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--pink)', fontWeight: 600 }}>
+                            {o.customer.telephone}
+                          </div>
+                        </td>
+                        <td style={{ maxWidth: '200px' }}>
+                          <div style={{ fontSize: '12.5px', fontWeight: 600 }}>{o.customer.ville}</div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {o.customer.adresse}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            {o.items.map((it, idx) => (
+                              <div key={idx} style={{ fontSize: '12px' }}>
+                                • <strong>{it.qty}x</strong> {it.name} <span style={{ color: 'var(--muted)' }}>({it.size})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700, color: 'var(--pink)', fontSize: '14px' }}>
+                            {formatPrice(o.total)}
+                          </div>
+                          <div style={{ fontSize: '10.5px', color: 'var(--muted)' }}>
+                            dont {formatPrice(o.deliveryFee)} livraison
+                          </div>
+                        </td>
+                        <td>
+                          <select
+                            value={o.status}
+                            onChange={e => handleUpdateOrderStatus(o.id, e.target.value as Order['status'])}
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: '8px',
+                              border: '1px solid var(--stroke)',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              background: '#fff',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="pending">En attente</option>
+                            <option value="confirmed">Confirmée</option>
+                            <option value="shipping">En livraison</option>
+                            <option value="delivered">Livrée</option>
+                            <option value="cancelled">Annulée</option>
+                          </select>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            onClick={() => openWhatsAppCustomer(o)}
+                            className="btn btn-success btn-sm"
+                            title="Ouvrir la discussion WhatsApp avec message complet"
+                          >
+                            WhatsApp
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredOrders.length === 0 && (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
+                          Aucune commande trouvée.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: SETTINGS */}
+          {activeTab === 'settings' && (
+            <div style={{ maxWidth: '800px' }}>
+              <div className="panel-card" style={{ marginBottom: '24px' }}>
+                <div className="panel-header">
+                  <h3 className="panel-title">Coordonnées & Contact Boutique</h3>
+                </div>
+
+                <form onSubmit={handleSaveSettings}>
+                  <div className="form-grid">
+                    <div className="form-field">
+                      <label className="form-label">Numéro WhatsApp Clientèle</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={settings.storePhone}
+                        onChange={e => setSettings({ ...settings, storePhone: e.target.value })}
+                        placeholder="77 123 45 67"
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label className="form-label">Email Professionnel</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={settings.storeEmail}
+                        onChange={e => setSettings({ ...settings, storeEmail: e.target.value })}
+                        placeholder="contact@oumalya.sn"
+                      />
+                    </div>
+
+                    <div className="form-field full">
+                      <label className="form-label">Bandeau d&apos;annonce supérieur</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={settings.announcement}
+                        onChange={e => setSettings({ ...settings, announcement: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="panel-header" style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--stroke-light)' }}>
+                    <h3 className="panel-title">Grille Tarifaire de Livraison (F CFA)</h3>
+                  </div>
+
+                  <div className="form-grid">
+                    <div className="form-field">
+                      <label className="form-label">Dakar Centre & Plateau (F CFA)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={settings.dakarFee}
+                        onChange={e => setSettings({ ...settings, dakarFee: Number(e.target.value) || 0 })}
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label className="form-label">Banlieue (Pikine, Guédiawaye, Rufisque)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={settings.banlieueFee}
+                        onChange={e => setSettings({ ...settings, banlieueFee: Number(e.target.value) || 0 })}
+                      />
+                    </div>
+
+                    <div className="form-field full">
+                      <label className="form-label">Régions (Thiès, Saint-Louis, Mbour, etc.)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={settings.regionFee}
+                        onChange={e => setSettings({ ...settings, regionFee: Number(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
+                    <button type="submit" className="btn btn-primary">
+                      Enregistrer les paramètres
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetProducts();
+                        showToast('Catalogue réinitialisé aux valeurs par défaut');
+                      }}
+                      className="btn btn-outline"
+                    >
+                      Restaurer catalogue de base
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* ==================== PRODUCT ADD / EDIT MODAL WITH LIVE SMARTPHONE MOCKUP ==================== */}
+      {isProductModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsProductModalOpen(false)}>
+          <div className="modal-window" onClick={e => e.stopPropagation()}>
+            <div className="modal-top">
+              <h2>
+                {productModalMode === 'create' ? 'Ajouter une nouvelle création' : 'Modifier la fiche produit'}
+              </h2>
               <button
-                type="button"
-                className="btn btn-outline btn-sm btn-icon"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => setIsProductModalOpen(false)}
+                className="btn btn-outline btn-icon"
+                title="Fermer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct}>
-              <div className="modal-body">
-                {/* Image Section */}
-                <div className="form-group full">
-                  <label className="form-label">
-                    Photo du produit <span className="req">*</span>
-                  </label>
-                  <div className="image-uploader">
-                    <img
-                      src={formData.img}
-                      alt="Aperçu"
-                      className="image-preview"
-                      onError={e => {
-                        (e.target as HTMLImageElement).src = '/images/hero-abaya-pink.jpg';
-                      }}
-                    />
-                    <div className="upload-controls">
-                      <div style={{ marginBottom: '10px' }}>
-                        <label className="btn btn-primary btn-sm file-input-btn">
-                          {isUploading ? 'Téléchargement...' : '📁 Choisir une photo depuis mon appareil'}
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            disabled={isUploading}
-                            onChange={handleFileUpload}
-                          />
-                        </label>
-                      </div>
-                      <p style={{ fontSize: '11px', color: 'var(--muted)', margin: '0 0 10px' }}>
-                        Formats acceptés : JPG, PNG, WEBP. L&apos;image est automatiquement enregistrée et optimisée.
-                      </p>
-                      <div>
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)' }}>
-                          Ou chemin / URL personnalisée :
-                        </span>
-                        <input
-                          type="text"
-                          className="form-input"
-                          style={{ marginTop: '4px' }}
-                          value={formData.img}
-                          onChange={e => setFormData({ ...formData, img: e.target.value })}
-                          placeholder="/images/nom-photo.jpg ou URL web"
+            <div className="modal-content-grid">
+              {/* Form Pane */}
+              <div className="modal-form-pane">
+                <form onSubmit={handleSaveProduct}>
+                  <div className="form-grid">
+                    <div className="form-field full">
+                      <label className="form-label">Nom du modèle *</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Ex: Abaya Soie de Médine Rose Poudré"
+                        value={productForm.name}
+                        onChange={e => setProductForm({ ...productForm, name: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label className="form-label">Catégorie</label>
+                      <select
+                        className="form-select"
+                        value={productForm.category}
+                        onChange={e => {
+                          const cat = e.target.value as 'abayas' | 'crocs';
+                          setProductForm({
+                            ...productForm,
+                            category: cat,
+                            sizesText: cat === 'crocs' ? '36, 37, 38, 39, 40' : 'S, M, L, XL'
+                          });
+                        }}
+                      >
+                        <option value="abayas">Abayas & Hijabs</option>
+                        <option value="crocs">Crocs Customisées</option>
+                      </select>
+                    </div>
+
+                    <div className="form-field">
+                      <label className="form-label">Prix unitaire (F CFA) *</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={productForm.price}
+                        onChange={e => setProductForm({ ...productForm, price: Number(e.target.value) || 0 })}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label className="form-label">Couleur principale</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Ex: Rose Poudré, Noir Ébène"
+                        value={productForm.color}
+                        onChange={e => setProductForm({ ...productForm, color: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label className="form-label">Badge promotionnel</label>
+                      <select
+                        className="form-select"
+                        value={productForm.badge}
+                        onChange={e => setProductForm({ ...productForm, badge: e.target.value })}
+                      >
+                        <option value="Nouveauté">Nouveauté</option>
+                        <option value="Populaire">Populaire</option>
+                        <option value="Édition Limitée">Édition Limitée</option>
+                        <option value="Coup de Cœur">Coup de Cœur</option>
+                        <option value="Rupture Proche">Rupture Proche</option>
+                      </select>
+                    </div>
+
+                    <div className="form-field full">
+                      <label className="form-label">Tailles disponibles (séparées par une virgule)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Ex: S, M, L, XL ou 37, 38, 39"
+                        value={productForm.sizesText}
+                        onChange={e => setProductForm({ ...productForm, sizesText: e.target.value })}
+                      />
+                    </div>
+
+                    {/* Image Upload Area */}
+                    <div className="form-field full">
+                      <label className="form-label">Photographie du produit</label>
+                      <div className="upload-card">
+                        <img
+                          src={productForm.img}
+                          alt="Aperçu"
+                          className="upload-thumb"
+                          onError={e => {
+                            (e.target as HTMLImageElement).src = '/images/hero-abaya-pink.jpg';
+                          }}
                         />
+                        <div style={{ flex: 1 }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ marginBottom: '8px', fontSize: '12px' }}
+                            placeholder="URL de l'image ou téléversez ci-dessous"
+                            value={productForm.img}
+                            onChange={e => setProductForm({ ...productForm, img: e.target.value })}
+                          />
+                          <div className="file-btn">
+                            <button
+                              type="button"
+                              className="btn btn-outline btn-sm"
+                              disabled={isUploading}
+                            >
+                              {isUploading ? 'Téléchargement...' : '📁 Choisir une photo depuis votre PC'}
+                            </button>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleFileUpload}
+                              disabled={isUploading}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-field full">
+                      <label className="form-label">Description courte</label>
+                      <textarea
+                        rows={2}
+                        className="form-textarea"
+                        placeholder="Brève description de la coupe..."
+                        value={productForm.desc}
+                        onChange={e => setProductForm({ ...productForm, desc: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="form-field full">
+                      <label className="form-label">Détails matière & entretien</label>
+                      <textarea
+                        rows={2}
+                        className="form-textarea"
+                        placeholder="Conseils de lavage, provenance du tissu..."
+                        value={productForm.detail}
+                        onChange={e => setProductForm({ ...productForm, detail: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => setIsProductModalOpen(false)}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isSaving}
+                    >
+                      {isSaving ? 'Enregistrement...' : productModalMode === 'create' ? 'Créer le produit' : 'Sauvegarder les modifications'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Simulator Pane: Live Mobile iPhone Mockup */}
+              <div className="modal-preview-pane">
+                <span className="preview-title">Aperçu Mobile en Temps Réel</span>
+
+                <div className="phone-mockup">
+                  <div className="phone-camera" />
+                  <div className="phone-screen">
+                    <div className="phone-product-card">
+                      <div className="phone-photo-wrap">
+                        <img
+                          src={productForm.img}
+                          alt="Preview"
+                          onError={e => {
+                            (e.target as HTMLImageElement).src = '/images/hero-abaya-pink.jpg';
+                          }}
+                        />
+                        <span className="phone-tag">{productForm.badge}</span>
+                      </div>
+                      <div className="phone-details">
+                        <span className="phone-cat">
+                          {productForm.category === 'crocs' ? 'Crocs OUMALYA' : 'Abayas & Hijabs'}
+                        </span>
+                        <div className="phone-name">
+                          {productForm.name || 'Nom du produit...'}
+                        </div>
+                        <div className="phone-price">
+                          {formatPrice(productForm.price || 0)}
+                        </div>
+                        <button type="button" className="phone-btn">
+                          Commander sur WhatsApp →
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="form-grid">
-                  {/* Name */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      Nom du produit <span className="req">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      required
-                      placeholder="Ex : Abaya Soie de Médine Rose"
-                      value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Category */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      Catégorie <span className="req">*</span>
-                    </label>
-                    <select
-                      className="form-select"
-                      value={formData.category}
-                      onChange={e => {
-                        const newCat = e.target.value as 'abayas' | 'crocs';
-                        setFormData({
-                          ...formData,
-                          category: newCat,
-                          sizesText: newCat === 'crocs' ? '36, 37, 38, 39, 40, 41' : 'S, M, L, XL'
-                        });
-                      }}
-                    >
-                      <option value="abayas">Abayas</option>
-                      <option value="crocs">Crocs</option>
-                    </select>
-                  </div>
-
-                  {/* Price */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      Prix (en Francs CFA) <span className="req">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="500"
-                      min="0"
-                      className="form-input"
-                      required
-                      placeholder="Ex : 25000"
-                      value={formData.price}
-                      onChange={e => setFormData({ ...formData, price: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  {/* Color */}
-                  <div className="form-group">
-                    <label className="form-label">Couleur principale</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="Ex : Noir, Rose poudré, Taupe..."
-                      value={formData.color}
-                      onChange={e => setFormData({ ...formData, color: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Badge */}
-                  <div className="form-group">
-                    <label className="form-label">Badge promotionnel</label>
-                    <select
-                      className="form-select"
-                      value={formData.badge}
-                      onChange={e => setFormData({ ...formData, badge: e.target.value })}
-                    >
-                      <option value="Nouveauté">Nouveauté</option>
-                      <option value="Coup de cœur">Coup de cœur</option>
-                      <option value="Best-seller">Best-seller</option>
-                      <option value="Élégance">Élégance</option>
-                      <option value="Édition limitée">Édition limitée</option>
-                    </select>
-                  </div>
-
-                  {/* Sizes */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      Tailles / Pointures (séparées par une virgule)
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="Ex : S, M, L, XL ou 36, 37, 38, 39"
-                      value={formData.sizesText}
-                      onChange={e => setFormData({ ...formData, sizesText: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Short Description */}
-                  <div className="form-group full">
-                    <label className="form-label">Description courte</label>
-                    <textarea
-                      className="form-textarea"
-                      rows={2}
-                      placeholder="Phrase de présentation du modèle..."
-                      value={formData.desc}
-                      onChange={e => setFormData({ ...formData, desc: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Detail */}
-                  <div className="form-group full">
-                    <label className="form-label">Détails & Spécifications</label>
-                    <textarea
-                      className="form-textarea"
-                      rows={2}
-                      placeholder="Matières, coupe, entretien, conseils..."
-                      value={formData.detail}
-                      onChange={e => setFormData({ ...formData, detail: e.target.value })}
-                    />
-                  </div>
-                </div>
+                <p style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '16px', textAlign: 'center', maxWidth: '240px' }}>
+                  Ce simulateur reproduit exactement la carte produit visible par vos clientes sur smartphone.
+                </p>
               </div>
-
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isSaving || isUploading}
-                >
-                  {isSaving ? 'Enregistrement...' : modalMode === 'create' ? 'Ajouter à la boutique' : 'Sauvegarder les modifications'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* ==================== DELETE PRODUCT CONFIRMATION MODAL ==================== */}
       {deletingProduct && (
-        <div className="modal-backdrop" onClick={() => setDeletingProduct(null)}>
-          <div className="modal-card confirm-dialog" onClick={e => e.stopPropagation()}>
-            <div className="confirm-icon">⚠️</div>
-            <h3>Supprimer cet article ?</h3>
-            <p>
-              Êtes-vous sûr de vouloir supprimer définitivement <strong>{deletingProduct.name}</strong> du catalogue ? Cette action est immédiate.
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => setDeletingProduct(null)}
-              >
-                Annuler
+        <div className="modal-overlay" onClick={() => setDeletingProduct(null)}>
+          <div className="modal-window" style={{ maxWidth: '440px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-top">
+              <h2 style={{ color: '#d82b4f' }}>Supprimer le produit ?</h2>
+              <button onClick={() => setDeletingProduct(null)} className="btn btn-outline btn-icon">
+                ✕
               </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={handleConfirmDelete}
-              >
-                Oui, supprimer
-              </button>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <p style={{ margin: '0 0 16px', fontSize: '13.5px', color: 'var(--ink)' }}>
+                Êtes-vous sûre de vouloir supprimer définitivement le modèle <strong>{deletingProduct.name}</strong> ?
+              </p>
+              <p style={{ margin: '0 0 24px', fontSize: '12px', color: 'var(--muted)' }}>
+                Cette action retirera le produit immédiatement de la boutique en ligne.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setDeletingProduct(null)} className="btn btn-outline">
+                  Annuler
+                </button>
+                <button onClick={handleConfirmDelete} className="btn btn-danger">
+                  Oui, supprimer
+                </button>
+              </div>
             </div>
           </div>
         </div>

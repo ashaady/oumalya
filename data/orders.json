@@ -1,0 +1,91 @@
+[
+  {
+    "id": "ORD-2026-001",
+    "createdAt": "2026-10-08T14:30:00.000Z",
+    "customer": {
+      "prenom": "Aminata",
+      "nom": "Diallo",
+      "telephone": "775421098",
+      "ville": "Dakar (Almadies)",
+      "adresse": "Route des Almadies, près de la Brioche Dorée",
+      "livraison": "Livraison à domicile (à confirmer)",
+      "note": "Merci de me contacter avant 15h sur WhatsApp svp."
+    },
+    "items": [
+      {
+        "id": "abaya-noire",
+        "name": "Abaya Élégante Noire",
+        "size": "M",
+        "qty": 1,
+        "price": 25000,
+        "img": "/images/product-abaya-noire.jpg"
+      },
+      {
+        "id": "crocs-rose",
+        "name": "Crocs Hello Kitty Rose",
+        "size": "38",
+        "qty": 1,
+        "price": 15000,
+        "img": "/images/product-crocs-rose.jpg"
+      }
+    ],
+    "subtotal": 40000,
+    "deliveryFee": 2000,
+    "total": 42000,
+    "status": "confirmed"
+  },
+  {
+    "id": "ORD-2026-002",
+    "createdAt": "2026-10-08T18:15:00.000Z",
+    "customer": {
+      "prenom": "Fatou",
+      "nom": "Sow",
+      "telephone": "781203344",
+      "ville": "Dakar (Mermoz)",
+      "adresse": "Cité Keur Gorgui, Immeuble A, 3e étage",
+      "livraison": "Livraison à domicile (à confirmer)",
+      "note": "Livraison souhaitée le soir après 18h."
+    },
+    "items": [
+      {
+        "id": "abaya-taupe",
+        "name": "Abaya Moderne Taupe",
+        "size": "L",
+        "qty": 1,
+        "price": 25000,
+        "img": "/images/product-abaya-taupe.jpg"
+      }
+    ],
+    "subtotal": 25000,
+    "deliveryFee": 2000,
+    "total": 27000,
+    "status": "shipping"
+  },
+  {
+    "id": "ORD-2026-003",
+    "createdAt": "2026-10-09T08:05:00.000Z",
+    "customer": {
+      "prenom": "Mariama",
+      "nom": "Ba",
+      "telephone": "766549911",
+      "ville": "Pikine (Guédiawaye)",
+      "adresse": "Arrêt Tally Diallo, Maison n°45",
+      "livraison": "Livraison à domicile (à confirmer)",
+      "note": "Pouvez-vous confirmer si la taille 39 est disponible ?"
+    },
+    "items": [
+      {
+        "id": "crocs-noir",
+        "name": "Crocs Hello Kitty Noir",
+        "size": "39",
+        "qty": 1,
+        "price": 15000,
+        "img": "/images/product-crocs-noir.jpg"
+      }
+    ],
+    "subtotal": 15000,
+    "deliveryFee": 3000,
+    "total": 18000,
+    "status": "pending"
+  }
+]

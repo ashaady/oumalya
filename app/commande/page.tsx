@@ -48,6 +48,29 @@ export default function CommandePage() {
     setOrderMessage(msg);
     showToast('Récapitulatif prêt à copier et envoyer');
 
+    // Persist order for merchant dashboard
+    try {
+      fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: formData,
+          items: cartEntries.map(x => ({
+            id: x.p.id,
+            name: x.p.name,
+            size: x.size,
+            qty: x.qty,
+            price: x.p.price,
+            img: x.p.img || x.p.image
+          })),
+          subtotal: totalPrice,
+          deliveryFee: 2000,
+          total: totalPrice + 2000,
+          status: 'pending'
+        })
+      });
+    } catch {}
+
     setTimeout(() => {
       document.getElementById('orderOutput')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
