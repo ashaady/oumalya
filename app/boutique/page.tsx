@@ -10,6 +10,7 @@ function BoutiqueContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
+    products,
     cart,
     addToCart,
     updateQuantity,
@@ -53,7 +54,7 @@ function BoutiqueContent() {
   };
 
   const filteredProducts = useMemo(() => {
-    let list = PRODUCTS.filter(p => {
+    let list = products.filter(p => {
       const matchesCat =
         category === 'all' ||
         (category === 'favorites' && favorites[p.id]) ||
@@ -237,7 +238,7 @@ function BoutiqueContent() {
                   onClick={() => selectCategory('abayas', true)}
                 >
                   <img alt="Abayas" src="/images/category-abayas.jpg" />
-                  Abayas <small>02</small>
+                  Abayas <small>{products.filter(p => p.category === 'abayas').length.toString().padStart(2, '0')}</small>
                 </button>
                 <button
                   aria-pressed={category === 'crocs'}
@@ -247,7 +248,7 @@ function BoutiqueContent() {
                   onClick={() => selectCategory('crocs', true)}
                 >
                   <img alt="Crocs" src="/images/category-crocs.jpg" />
-                  Crocs <small>02</small>
+                  Crocs <small>{products.filter(p => p.category === 'crocs').length.toString().padStart(2, '0')}</small>
                 </button>
               </div>
             </div>
@@ -469,6 +470,7 @@ function BoutiqueContent() {
                 <Link href="/panier">Mon panier</Link>
                 <Link href="/favoris">Mes favoris</Link>
                 <Link href="/contact">Contact</Link>
+                <Link href="/admin">Administration</Link>
               </div>
             </div>
           </div>

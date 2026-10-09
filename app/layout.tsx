@@ -3,6 +3,7 @@ import '@/styles/globals.css';
 import '@/styles/home.scoped.css';
 import '@/styles/boutique.scoped.css';
 import '@/styles/subpages.scoped.css';
+import '@/styles/admin.scoped.css';
 import { CartProvider } from '@/context/CartContext';
 
 export const metadata: Metadata = {

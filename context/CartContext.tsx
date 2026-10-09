@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { Product, PRODUCTS_BY_ID } from '@/data/products';
+import { Product, PRODUCTS as DEFAULT_PRODUCTS, PRODUCTS_BY_ID as DEFAULT_BY_ID } from '@/data/products';
 
 export interface CartEntry {
   p: Product;
@@ -10,6 +10,16 @@ export interface CartEntry {
 }
 
 export interface CartContextType {
+  // Products
+  products: Product[];
+  productsById: Record<string, Product>;
+  refreshProducts: () => Promise<void>;
+  addProduct: (data: Partial<Product>) => Promise<Product | null>;
+  updateProduct: (data: Partial<Product> & { id: string }) => Promise<Product | null>;
+  deleteProduct: (id: string) => Promise<boolean>;
+  resetProducts: () => Promise<void>;
+
+  // Cart & Favorites
   cart: Record<string, Record<string, number>>;
   favorites: Record<string, boolean>;
   cartEntries: CartEntry[];
@@ -21,6 +31,7 @@ export interface CartContextType {
   toggleFavorite: (id: string) => void;
   isFavorite: (id: string) => boolean;
   clearCart: () => void;
+
   // UI states
   isCartOpen: boolean;
   openCart: () => void;
@@ -40,8 +51,10 @@ const CartContext = createContext<CartContextType | null>(null);
 
 const CART_KEY = 'oumalya_cart_v2';
 const FAV_KEY = 'oumalya_fav_v2';
+const PRODUCTS_KEY = 'oumalya_products_v2';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
   const [cart, setCart] = useState<Record<string, Record<string, number>>>({});
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -50,15 +63,148 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastTimeout, setToastTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  const productsById = useMemo(() => {
+    return Object.fromEntries(products.map(p => [p.id, p]));
+  }, [products]);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    if (toastTimeout) clearTimeout(toastTimeout);
+    const t = setTimeout(() => {
+      setToastMessage(null);
+    }, 2800);
+    setToastTimeout(t);
+  }, [toastTimeout]);
+
+  // Fetch products from API and sync localStorage
+  const refreshProducts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/products');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length) {
+          setProducts(data);
+          try {
+            localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data));
+          } catch {}
+          return;
+        }
+      }
+    } catch {}
+
+    // Fallback to localStorage if API unavailable
+    try {
+      const cached = localStorage.getItem(PRODUCTS_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length) {
+          setProducts(parsed);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const addProduct = useCallback(async (data: Partial<Product>): Promise<Product | null> => {
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success && json.product) {
+        setProducts(prev => {
+          const next = [...prev, json.product];
+          try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+        showToast(`Produit "${json.product.name}" ajouté avec succès`);
+        return json.product;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    showToast('Erreur lors de l\'ajout du produit');
+    return null;
+  }, [showToast]);
+
+  const updateProduct = useCallback(async (data: Partial<Product> & { id: string }): Promise<Product | null> => {
+    try {
+      const res = await fetch('/api/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success && json.product) {
+        setProducts(prev => {
+          const next = prev.map(p => p.id === data.id ? json.product : p);
+          try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+        showToast(`Produit "${json.product.name}" mis à jour`);
+        return json.product;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    showToast('Erreur lors de la mise à jour du produit');
+    return null;
+  }, [showToast]);
+
+  const deleteProduct = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/products?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+      const json = await res.json();
+      if (json.success) {
+        setProducts(prev => {
+          const next = prev.filter(p => p.id !== id);
+          try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+        // Also remove from cart and favorites
+        setCart(prev => {
+          const updated = { ...prev };
+          delete updated[id];
+          try { localStorage.setItem(CART_KEY, JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        showToast('Produit supprimé');
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    showToast('Erreur lors de la suppression');
+    return false;
+  }, [showToast]);
+
+  const resetProducts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/products?reset=true');
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data);
+        try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data)); } catch {}
+        showToast('Catalogue réinitialisé avec les produits de démonstration');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [showToast]);
+
   // Load from localStorage on client mount
   useEffect(() => {
+    refreshProducts();
+
     try {
       const savedCart = localStorage.getItem(CART_KEY);
       if (savedCart) {
         const raw = JSON.parse(savedCart);
         const normalized: Record<string, Record<string, number>> = {};
         for (const [id, val] of Object.entries(raw)) {
-          if (!PRODUCTS_BY_ID[id]) continue;
           if (typeof val === 'number') {
             if (val > 0) normalized[id] = { default: Math.min(99, Math.floor(val)) };
           } else if (val && typeof val === 'object') {
@@ -82,16 +228,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setFavorites(JSON.parse(savedFav));
       }
     } catch {}
-  }, []);
-
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    if (toastTimeout) clearTimeout(toastTimeout);
-    const t = setTimeout(() => {
-      setToastMessage(null);
-    }, 2800);
-    setToastTimeout(t);
-  }, [toastTimeout]);
+  }, [refreshProducts]);
 
   const saveCart = useCallback((newCart: Record<string, Record<string, number>>) => {
     setCart(newCart);
@@ -108,7 +245,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addToCart = useCallback((id: string, size = 'default', qty = 1) => {
-    const p = PRODUCTS_BY_ID[id];
+    const p = productsById[id] || DEFAULT_BY_ID[id];
     if (!p) return;
     setCart(prev => {
       const updated = { ...prev };
@@ -121,7 +258,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updated;
     });
     showToast(`${p.name} ajouté au panier`);
-  }, [showToast]);
+  }, [productsById, showToast]);
 
   const updateQuantity = useCallback((id: string, size: string, delta: number) => {
     setCart(prev => {
@@ -189,7 +326,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartEntries = useMemo<CartEntry[]>(() => {
     const list: CartEntry[] = [];
     for (const [id, sizes] of Object.entries(cart)) {
-      const p = PRODUCTS_BY_ID[id];
+      const p = productsById[id] || DEFAULT_BY_ID[id];
       if (!p) continue;
       for (const [size, qty] of Object.entries(sizes)) {
         if (qty > 0) {
@@ -198,7 +335,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     }
     return list;
-  }, [cart]);
+  }, [cart, productsById]);
 
   const totalCount = useMemo(() => {
     return cartEntries.reduce((sum, item) => sum + item.qty, 0);
@@ -245,6 +382,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider
       value={{
+        products,
+        productsById,
+        refreshProducts,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        resetProducts,
         cart,
         favorites,
         cartEntries,

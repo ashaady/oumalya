@@ -11,9 +11,9 @@ function ProductContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id') || 'crocs-rose';
-  const p = PRODUCTS_BY_ID[id] || PRODUCTS[1];
+  const { products, productsById, addToCart, isFavorite, toggleFavorite, showToast } = useCart();
+  const p = productsById[id] || products.find(x => x.id === id) || products[0];
 
-  const { addToCart, isFavorite, toggleFavorite, showToast } = useCart();
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [qty, setQty] = useState<number>(1);
 
@@ -42,7 +42,7 @@ function ProductContent() {
     }
   };
 
-  const related = PRODUCTS.filter(x => x.id !== p.id).slice(0, 3);
+  const related = products.filter(x => x.id !== p.id).slice(0, 3);
 
   return (
     <SubpageLayout>

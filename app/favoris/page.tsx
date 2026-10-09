@@ -7,8 +7,8 @@ import { useCart } from '@/context/CartContext';
 import { PRODUCTS, formatPrice } from '@/data/products';
 
 export default function FavorisPage() {
-  const { favorites } = useCart();
-  const favoriteProducts = PRODUCTS.filter(p => !!favorites[p.id]);
+  const { products, favorites } = useCart();
+  const favoriteProducts = products.filter(p => !!favorites[p.id]);
 
   return (
     <SubpageLayout>

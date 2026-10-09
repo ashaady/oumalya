@@ -98,6 +98,7 @@ export default function SubpageLayout({ children }: SubpageLayoutProps) {
                 <Link href="/livraison">Livraison &amp; FAQ</Link>
                 <Link href="/contact">Nous contacter</Link>
                 <Link href="/panier">Mon panier</Link>
+                <Link href="/admin">Administration</Link>
               </div>
             </div>
             <div>

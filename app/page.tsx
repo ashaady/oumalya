@@ -9,6 +9,7 @@ import { PRODUCTS, PRODUCTS_BY_ID, formatPrice } from '@/data/products';
 export default function HomePage() {
   const router = useRouter();
   const {
+    products,
     cart,
     addToCart,
     updateQuantity,
@@ -68,7 +69,7 @@ export default function HomePage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [closeCart, closeSearch]);
 
-  const searchResults = Object.values(PRODUCTS_BY_ID).filter(p =>
+  const searchResults = products.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
   );
 
@@ -236,113 +237,33 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="product-grid">
-              {/* Product 1: Crocs Noir */}
-              <article className="product-card" id="produit-crocs">
-                <div className="product-image-wrap">
-                  <Link href="/produit?id=crocs-noir">
-                    <img alt="Crocs Hello Kitty noires avec accessoires" loading="lazy" src="/images/index-crocs-noir.jpg" />
+              {products.slice(0, 8).map(p => (
+                <article key={p.id} className="product-card" id={`produit-${p.id}`}>
+                  <div className="product-image-wrap">
+                    <Link href={`/produit?id=${p.id}`}>
+                      <img alt={p.name} loading="lazy" src={p.img || p.image} />
+                    </Link>
+                    <button
+                      aria-label={`Ajouter ${p.name} aux favoris`}
+                      aria-pressed={isFavorite(p.id)}
+                      className={`favorite ${isFavorite(p.id) ? 'is-favorite' : ''}`}
+                      onClick={() => toggleFavorite(p.id)}
+                    >
+                      <svg style={{ fill: isFavorite(p.id) ? '#eb5c8e' : 'none' }}>
+                        <use href="#i-heart"></use>
+                      </svg>
+                    </button>
+                  </div>
+                  <Link href={`/produit?id=${p.id}`}>
+                    <p className="product-name">{p.name}</p>
                   </Link>
-                  <button
-                    aria-label="Ajouter Crocs Hello Kitty Noir aux favoris"
-                    aria-pressed={isFavorite('crocs-noir')}
-                    className={`favorite ${isFavorite('crocs-noir') ? 'is-favorite' : ''}`}
-                    onClick={() => toggleFavorite('crocs-noir')}
-                  >
-                    <svg style={{ fill: isFavorite('crocs-noir') ? '#eb5c8e' : 'none' }}>
-                      <use href="#i-heart"></use>
-                    </svg>
+                  <p className="price">{formatPrice(p.price)}</p>
+                  <button className="add-cart" data-product={p.id} onClick={() => addToCart(p.id)}>
+                    <svg><use href="#i-bag"></use></svg>
+                    Ajouter au panier
                   </button>
-                </div>
-                <Link href="/produit?id=crocs-noir">
-                  <p className="product-name">Crocs Hello Kitty Noir</p>
-                </Link>
-                <p className="price">15 000 F</p>
-                <button className="add-cart" data-product="crocs-noir" onClick={() => addToCart('crocs-noir')}>
-                  <svg><use href="#i-bag"></use></svg>
-                  Ajouter au panier
-                </button>
-              </article>
-
-              {/* Product 2: Crocs Rose */}
-              <article className="product-card">
-                <div className="product-image-wrap">
-                  <Link href="/produit?id=crocs-rose">
-                    <img alt="Crocs Hello Kitty roses avec accessoires" loading="lazy" src="/images/index-crocs-rose.jpg" />
-                  </Link>
-                  <button
-                    aria-label="Ajouter Crocs Hello Kitty Rose aux favoris"
-                    aria-pressed={isFavorite('crocs-rose')}
-                    className={`favorite ${isFavorite('crocs-rose') ? 'is-favorite' : ''}`}
-                    onClick={() => toggleFavorite('crocs-rose')}
-                  >
-                    <svg style={{ fill: isFavorite('crocs-rose') ? '#eb5c8e' : 'none' }}>
-                      <use href="#i-heart"></use>
-                    </svg>
-                  </button>
-                </div>
-                <Link href="/produit?id=crocs-rose">
-                  <p className="product-name">Crocs Hello Kitty Rose</p>
-                </Link>
-                <p className="price">15 000 F</p>
-                <button className="add-cart" data-product="crocs-rose" onClick={() => addToCart('crocs-rose')}>
-                  <svg><use href="#i-bag"></use></svg>
-                  Ajouter au panier
-                </button>
-              </article>
-
-              {/* Product 3: Abaya Noire */}
-              <article className="product-card" id="produit-abaya">
-                <div className="product-image-wrap">
-                  <Link href="/produit?id=abaya-noire">
-                    <img alt="Abaya élégante noire" loading="lazy" src="/images/index-abaya-noire.jpg" />
-                  </Link>
-                  <button
-                    aria-label="Ajouter Abaya Élégante Noir aux favoris"
-                    aria-pressed={isFavorite('abaya-noire')}
-                    className={`favorite ${isFavorite('abaya-noire') ? 'is-favorite' : ''}`}
-                    onClick={() => toggleFavorite('abaya-noire')}
-                  >
-                    <svg style={{ fill: isFavorite('abaya-noire') ? '#eb5c8e' : 'none' }}>
-                      <use href="#i-heart"></use>
-                    </svg>
-                  </button>
-                </div>
-                <Link href="/produit?id=abaya-noire">
-                  <p className="product-name">Abaya Élégante Noir</p>
-                </Link>
-                <p className="price">25 000 F</p>
-                <button className="add-cart" data-product="abaya-noire" onClick={() => addToCart('abaya-noire')}>
-                  <svg><use href="#i-bag"></use></svg>
-                  Ajouter au panier
-                </button>
-              </article>
-
-              {/* Product 4: Abaya Taupe */}
-              <article className="product-card">
-                <div className="product-image-wrap">
-                  <Link href="/produit?id=abaya-taupe">
-                    <img alt="Abaya moderne taupe" loading="lazy" src="/images/index-abaya-taupe.jpg" />
-                  </Link>
-                  <button
-                    aria-label="Ajouter Abaya Moderne Taupe aux favoris"
-                    aria-pressed={isFavorite('abaya-taupe')}
-                    className={`favorite ${isFavorite('abaya-taupe') ? 'is-favorite' : ''}`}
-                    onClick={() => toggleFavorite('abaya-taupe')}
-                  >
-                    <svg style={{ fill: isFavorite('abaya-taupe') ? '#eb5c8e' : 'none' }}>
-                      <use href="#i-heart"></use>
-                    </svg>
-                  </button>
-                </div>
-                <Link href="/produit?id=abaya-taupe">
-                  <p className="product-name">Abaya Moderne Taupe</p>
-                </Link>
-                <p className="price">25 000 F</p>
-                <button className="add-cart" data-product="abaya-taupe" onClick={() => addToCart('abaya-taupe')}>
-                  <svg><use href="#i-bag"></use></svg>
-                  Ajouter au panier
-                </button>
-              </article>
+                </article>
+              ))}
             </div>
           </section>
 
@@ -374,6 +295,7 @@ export default function HomePage() {
             <Link href="/contact">Contact</Link>
             <Link href="/panier">Panier</Link>
             <Link href="/favoris">Favoris</Link>
+            <Link href="/admin">Admin</Link>
           </nav>
         </div>
       </footer>
