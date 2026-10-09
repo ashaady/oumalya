@@ -1,6 +1,7 @@
 {
   "username": "oumalya",
-  "password": "passer",
-  "mustChangePassword": true,
-  "createdAt": "2026-10-09T01:00:00.000Z"
+  "password": "passer3",
+  "mustChangePassword": false,
+  "createdAt": "2026-10-09T01:00:00.000Z",
+  "updatedAt": "2026-10-09T01:15:56.561Z"
 }

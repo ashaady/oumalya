@@ -63,31 +63,31 @@ export default function LivraisonPage() {
             <details className="disclosure" open>
               <summary>Comment passer commande ?</summary>
               <p>
-                Ajoutez un produit au panier, sélectionnez sa taille et complétez la page Commande. Vous pourrez copier le récapitulatif pour l’envoyer à la boutique via son canal officiel.
+                Ajoutez vos articles au panier, renseignez votre lieu de livraison sur la page Commande, puis validez. Votre commande est immédiatement enregistrée et transmise sur WhatsApp au <strong>+221 78 599 91 86</strong> pour confirmation.
               </p>
             </details>
             <details className="disclosure">
               <summary>Quels sont les frais et délais de livraison ?</summary>
               <p>
-                Les zones desservies, frais et délais sont à préciser avec la fondatrice avant la mise en ligne du site. Le total affiché ne comprend donc pas la livraison.
+                Nous livrons sous 24h à 48h à Dakar et expédions dans toutes les régions du Sénégal. Les modalités précises et les frais de livraison sont convenus directement sur WhatsApp selon votre adresse.
               </p>
             </details>
             <details className="disclosure">
               <summary>Comment vérifier les tailles disponibles ?</summary>
               <p>
-                Sélectionnez une taille sur la fiche de chaque article, puis faites confirmer le stock et les mesures au moment de commander.
+                Sélectionnez votre taille sur la fiche du produit (S, M, L, XL pour les abayas ou votre pointure pour les crocs). Notre équipe confirme la disponibilité en temps réel sur WhatsApp.
               </p>
             </details>
             <details className="disclosure">
-              <summary>Puis-je payer directement sur le site ?</summary>
+              <summary>Comment s'effectue le paiement ?</summary>
               <p>
-                Non. Cette version est une démonstration fonctionnelle du parcours d’achat sans système de paiement. Aucun paiement n’est prélevé.
+                Le paiement s'effectue en toute simplicité à la livraison : en espèces ou par Wave / Orange Money directement auprès du livreur.
               </p>
             </details>
             <details className="disclosure">
               <summary>Comment fonctionnent les retours et échanges ?</summary>
               <p>
-                Les conditions de retour et d’échange ne sont pas encore communiquées. Elles devront être publiées après validation par la boutique.
+                En cas de problème de taille ou de conformité, contactez notre service client sur WhatsApp dès réception du colis pour organiser un échange rapide.
               </p>
             </details>
           </div>

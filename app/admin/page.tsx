@@ -96,12 +96,12 @@ export default function AdminPage() {
     id: '',
     name: '',
     category: 'abayas' as 'abayas' | 'crocs',
-    price: 25000,
-    color: 'Noir Ébène',
+    price: 0,
+    color: '',
     badge: 'Nouveauté',
     sizesText: 'S, M, L, XL',
-    desc: 'Confection artisanale haut de gamme avec tissu crêpe fluide.',
-    detail: 'Matière respirante, finitions perlées à la main. Lavage délicat recommandé.',
+    desc: '',
+    detail: '',
     img: '/images/hero-abaya-pink.jpg'
   });
 
@@ -386,12 +386,12 @@ export default function AdminPage() {
       id: '',
       name: '',
       category: 'abayas',
-      price: 25000,
-      color: 'Noir Ébène',
+      price: 0,
+      color: '',
       badge: 'Nouveauté',
       sizesText: 'S, M, L, XL',
-      desc: 'Pièce exclusive de la nouvelle collection OUMALYA avec finitions faites à la main.',
-      detail: 'Photographie illustrative. Matière, coupe exacte et tailles disponibles à confirmer avant la commande.',
+      desc: '',
+      detail: '',
       img: '/images/hero-abaya-pink.jpg'
     });
     setIsProductModalOpen(true);
@@ -533,6 +533,32 @@ export default function AdminPage() {
       crocsCount
     };
   }, [orders, products]);
+
+  // Dynamic 7-day revenue chart from real orders (no fake data)
+  const chartData = useMemo(() => {
+    const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    const now = new Date();
+    const last7: { dayLabel: string; dayRevenue: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayKey = d.toISOString().slice(0, 10);
+      const dayLabel = days[d.getDay()];
+      const dayOrders = orders.filter(
+        o => o.createdAt && o.createdAt.slice(0, 10) === dayKey && o.status !== 'cancelled'
+      );
+      const dayRevenue = dayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+      last7.push({ dayLabel, dayRevenue });
+    }
+    const maxRev = Math.max(1, ...last7.map(x => x.dayRevenue));
+    const points = last7.map((item, idx) => {
+      const x = 30 + idx * 90;
+      const y = item.dayRevenue > 0 ? 170 - (item.dayRevenue / maxRev) * 130 : 170;
+      return { ...item, x, y };
+    });
+    const hasAnySales = orders.some(o => o.status !== 'cancelled' && (o.total || 0) > 0);
+    return { points, hasAnySales, last7 };
+  }, [orders]);
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
@@ -1147,7 +1173,11 @@ export default function AdminPage() {
                   </div>
                   <div className="kpi-value">{formatPrice(stats.totalRevenue)}</div>
                   <div className="kpi-sub">
-                    <span className="kpi-trend">↑ En hausse</span> · Total cumulé
+                    {stats.totalRevenue > 0 ? (
+                      <span className="kpi-trend">↑ En activité · Total cumulé</span>
+                    ) : (
+                      'En attente de commandes réelles'
+                    )}
                   </div>
                 </div>
 
@@ -1162,8 +1192,10 @@ export default function AdminPage() {
                       <span style={{ color: '#d82b4f', fontWeight: 700 }}>
                         {stats.pendingOrders} à traiter
                       </span>
-                    ) : (
+                    ) : stats.totalOrders > 0 ? (
                       'Toutes traitées'
+                    ) : (
+                      'Aucune commande reçue'
                     )}
                   </div>
                 </div>
@@ -1185,19 +1217,21 @@ export default function AdminPage() {
                     <span className="kpi-icon">✨</span>
                   </div>
                   <div className="kpi-value">{formatPrice(stats.avgOrderValue)}</div>
-                  <div className="kpi-sub">Par commande client</div>
+                  <div className="kpi-sub">
+                    {stats.totalOrders > 0 ? 'Par commande client' : 'En attente de ventes'}
+                  </div>
                 </div>
               </div>
 
               {/* Grid: Revenue Chart + Category Breakdown */}
               <div className="dashboard-grid">
-                {/* SVG Curve Chart */}
+                {/* Real Dynamic Revenue Chart */}
                 <div className="panel-card">
                   <div className="panel-header">
                     <div>
                       <h3 className="panel-title">Tendance des Ventes (F CFA)</h3>
                       <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
-                        Progression estimée des ventes sur la semaine écoulée
+                        Progression réelle des ventes sur les 7 derniers jours
                       </p>
                     </div>
                     <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--pink)' }}>
@@ -1205,52 +1239,63 @@ export default function AdminPage() {
                     </span>
                   </div>
 
-                  <div className="chart-wrap">
-                    <svg className="chart-svg" viewBox="0 0 600 200" preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#eb5c8e" stopOpacity="0.4" />
-                          <stop offset="100%" stopColor="#eb5c8e" stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
-
-                      {/* Horizontal Grid lines */}
-                      <line x1="0" y1="50" x2="600" y2="50" stroke="#f2ecee" strokeDasharray="4" />
-                      <line x1="0" y1="100" x2="600" y2="100" stroke="#f2ecee" strokeDasharray="4" />
-                      <line x1="0" y1="150" x2="600" y2="150" stroke="#f2ecee" strokeDasharray="4" />
-
-                      {/* Area Fill */}
-                      <polygon
-                        className="chart-area"
-                        points="20,160 110,130 200,140 290,90 380,110 470,60 560,40 560,190 20,190"
-                      />
-
-                      {/* Smooth Line */}
-                      <polyline
-                        className="chart-line"
-                        points="20,160 110,130 200,140 290,90 380,110 470,60 560,40"
-                      />
-
-                      {/* Data Dots */}
-                      <circle cx="20" cy="160" className="chart-dot" />
-                      <circle cx="110" cy="130" className="chart-dot" />
-                      <circle cx="200" cy="140" className="chart-dot" />
-                      <circle cx="290" cy="90" className="chart-dot" />
-                      <circle cx="380" cy="110" className="chart-dot" />
-                      <circle cx="470" cy="60" className="chart-dot" />
-                      <circle cx="560" cy="40" className="chart-dot" />
-                    </svg>
-
-                    <div className="chart-labels">
-                      <span>Lun</span>
-                      <span>Mar</span>
-                      <span>Mer</span>
-                      <span>Jeu</span>
-                      <span>Ven</span>
-                      <span>Sam</span>
-                      <span>Dim</span>
+                  {!chartData.hasAnySales ? (
+                    <div style={{
+                      height: '220px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      color: 'var(--muted)',
+                      padding: '20px'
+                    }}>
+                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>📈</div>
+                      <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--ink)' }}>
+                        Aucune vente enregistrée pour le moment
+                      </p>
+                      <span style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px', maxWidth: '320px' }}>
+                        La courbe d&apos;évolution des ventes se tracera automatiquement dès vos premières commandes réelles.
+                      </span>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="chart-wrap">
+                      <svg className="chart-svg" viewBox="0 0 600 200" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#eb5c8e" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#eb5c8e" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+
+                        <line x1="0" y1="50" x2="600" y2="50" stroke="#f2ecee" strokeDasharray="4" />
+                        <line x1="0" y1="100" x2="600" y2="100" stroke="#f2ecee" strokeDasharray="4" />
+                        <line x1="0" y1="150" x2="600" y2="150" stroke="#f2ecee" strokeDasharray="4" />
+
+                        <polygon
+                          className="chart-area"
+                          points={`30,190 ${chartData.points.map(p => `${p.x},${p.y}`).join(' ')} 570,190`}
+                        />
+
+                        <polyline
+                          className="chart-line"
+                          points={chartData.points.map(p => `${p.x},${p.y}`).join(' ')}
+                        />
+
+                        {chartData.points.map((p, idx) => (
+                          <circle key={idx} cx={p.x} cy={p.y} className="chart-dot">
+                            <title>{`${p.dayLabel}: ${formatPrice(p.dayRevenue)}`}</title>
+                          </circle>
+                        ))}
+                      </svg>
+
+                      <div className="chart-labels">
+                        {chartData.points.map((p, idx) => (
+                          <span key={idx}>{p.dayLabel}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Categories & Fast Actions */}

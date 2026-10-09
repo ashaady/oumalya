@@ -71,8 +71,10 @@ export default function ContactPage() {
                 <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.9-5.4a9 9 0 0 1-.9-4A8.5 8.5 0 0 1 12.5 3a8.5 8.5 0 0 1 8.5 8.5Z" />
               </svg>
               <div>
-                <strong>WhatsApp</strong>
-                <small>Numéro professionnel à renseigner</small>
+                <strong>WhatsApp Service Client</strong>
+                <a href="https://wa.me/221785999186" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--pink)', display: 'block', fontWeight: 600 }}>
+                  +221 78 599 91 86
+                </a>
               </div>
             </div>
 
@@ -83,7 +85,7 @@ export default function ContactPage() {
               </svg>
               <div>
                 <strong>Zone de vente</strong>
-                <small>Sénégal · Adresse et modalités à préciser</small>
+                <small>Dakar &amp; expédition sécurisée dans tout le Sénégal</small>
               </div>
             </div>
 
@@ -93,8 +95,8 @@ export default function ContactPage() {
                 <path d="m2 6 10 8 10-8" />
               </svg>
               <div>
-                <strong>E-mail</strong>
-                <small>Adresse professionnelle à renseigner</small>
+                <strong>E-mail Officiel</strong>
+                <small>contact@oumalya.sn</small>
               </div>
             </div>
 
@@ -105,8 +107,8 @@ export default function ContactPage() {
                 <circle cx="18" cy="19" r="2" />
               </svg>
               <div>
-                <strong>Livraison</strong>
-                <small>Zones, délais et tarifs à confirmer</small>
+                <strong>Livraison Express</strong>
+                <small>À domicile à Dakar et retrait en agence en région</small>
               </div>
             </div>
           </aside>
