@@ -9,45 +9,21 @@ import { formatPrice } from '@/data/products';
 const OFFICIAL_WHATSAPP = '221785999186';
 const DISPLAY_WHATSAPP = '+221 78 599 91 86';
 
-type DeliveryZone = 'dakar' | 'banlieue' | 'regions';
-
-const ZONES: Record<DeliveryZone, { label: string; fee: number; sub: string }> = {
-  dakar: {
-    label: 'Dakar Ville & Centre',
-    fee: 2000,
-    sub: 'Almadies, Mermoz, Plateau, Point E, Ngor, Yoff, Ouakam, Fann…'
-  },
-  banlieue: {
-    label: 'Banlieue Dakaroise',
-    fee: 3000,
-    sub: 'Pikine, Guédiawaye, Keur Massar, Rufisque, Parcelles Assainies…'
-  },
-  regions: {
-    label: 'Régions du Sénégal',
-    fee: 5000,
-    sub: 'Thiès, Mbour, Saly, Saint-Louis, Kaolack, Touba, Ziguinchor…'
-  }
-};
-
 export default function CommandePage() {
   const { cartEntries, totalPrice, totalCount, clearCart, showToast } = useCart();
 
   const [nom, setNom] = useState('');
   const [telephone, setTelephone] = useState('');
-  const [zone, setZone] = useState<DeliveryZone>('dakar');
-  const [adresse, setAdresse] = useState('');
+  const [lieu, setLieu] = useState('');
   const [note, setNote] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<{
     id: string;
     total: number;
-    deliveryFee: number;
+    lieu: string;
     whatsappMsg: string;
   } | null>(null);
-
-  const deliveryFee = ZONES[zone].fee;
-  const grandTotal = totalPrice + deliveryFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,8 +33,8 @@ export default function CommandePage() {
       return;
     }
 
-    if (!nom.trim() || !telephone.trim() || !adresse.trim()) {
-      showToast('Veuillez remplir votre nom, téléphone et adresse de livraison.');
+    if (!nom.trim() || !telephone.trim() || !lieu.trim()) {
+      showToast('Veuillez renseigner votre nom, téléphone et lieu de livraison.');
       return;
     }
 
@@ -68,7 +44,7 @@ export default function CommandePage() {
       // 1. Generate clean order reference
       const orderRef = `ORD-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // 2. Prepare items summary for WhatsApp
+      // 2. Prepare items list for WhatsApp
       const itemsList = cartEntries
         .map(
           item =>
@@ -78,8 +54,6 @@ export default function CommandePage() {
         )
         .join('\n');
 
-      const zoneInfo = ZONES[zone];
-
       // 3. Pre-formatted official WhatsApp message
       const whatsappMsg =
         `✨ *NOUVELLE COMMANDE OUMALYA CLOTHING* ✨\n` +
@@ -87,19 +61,17 @@ export default function CommandePage() {
         `📋 *Réf. Commande :* ${orderRef}\n\n` +
         `👤 *Cliente :* ${nom.trim()}\n` +
         `📞 *Téléphone / WhatsApp :* ${telephone.trim()}\n` +
-        `📍 *Lieu de livraison :* ${zoneInfo.label}\n` +
-        `🏠 *Adresse / Repère :* ${adresse.trim()}\n\n` +
+        `📍 *Lieu de livraison :* ${lieu.trim()}\n\n` +
         `🛍️ *Articles commandés :*\n` +
         `${itemsList}\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `💵 *Sous-total articles :* ${formatPrice(totalPrice)}\n` +
-        `🚚 *Frais de livraison :* ${formatPrice(deliveryFee)}\n` +
-        `💎 *TOTAL GÉNÉRAL :* ${formatPrice(grandTotal)}\n` +
+        `💎 *TOTAL ARTICLES :* ${formatPrice(totalPrice)}\n` +
+        `🚚 *Frais de livraison :* À convenir sur WhatsApp\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         (note.trim() ? `📝 *Note client :* ${note.trim()}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n` : '') +
-        `\nBonjour OUMALYA, je viens de valider ma commande sur le site officiel et souhaite convenir du créneau de livraison avec vous. Merci beaucoup ! ✨`;
+        `\nBonjour OUMALYA, je viens de valider ma commande sur le site internet et je souhaite confirmer les détails de livraison avec vous au *${lieu.trim()}*. Merci ! ✨`;
 
-      // 4. Save order in the database via /api/orders
+      // 4. Register order in database via /api/orders
       const splitNames = nom.trim().split(' ');
       const prenomPart = splitNames[0] || '';
       const nomPart = splitNames.slice(1).join(' ') || prenomPart;
@@ -113,9 +85,9 @@ export default function CommandePage() {
             prenom: prenomPart,
             nom: nomPart,
             telephone: telephone.trim(),
-            ville: zoneInfo.label,
-            adresse: adresse.trim(),
-            livraison: 'Livraison à domicile express',
+            ville: lieu.trim(),
+            adresse: lieu.trim(),
+            livraison: 'À convenir sur WhatsApp',
             note: note.trim()
           },
           items: cartEntries.map(x => ({
@@ -127,8 +99,8 @@ export default function CommandePage() {
             img: x.p.img || x.p.image
           })),
           subtotal: totalPrice,
-          deliveryFee: deliveryFee,
-          total: grandTotal,
+          deliveryFee: 0,
+          total: totalPrice,
           status: 'pending'
         })
       });
@@ -137,19 +109,19 @@ export default function CommandePage() {
       const waUrl = `https://wa.me/${OFFICIAL_WHATSAPP}?text=${encodeURIComponent(whatsappMsg)}`;
       window.open(waUrl, '_blank');
 
-      // 6. Record confirmation & clear cart
+      // 6. Set confirmation & clear cart
       setConfirmedOrder({
         id: orderRef,
-        total: grandTotal,
-        deliveryFee,
+        total: totalPrice,
+        lieu: lieu.trim(),
         whatsappMsg
       });
 
       clearCart();
-      showToast('Commande validée ! Redirection WhatsApp en cours…');
+      showToast('Commande enregistrée ! Redirection WhatsApp en cours…');
     } catch (err) {
       console.error(err);
-      showToast('Une erreur est survenue lors de l\'enregistrement');
+      showToast('Erreur lors de la validation de la commande');
     } finally {
       setIsSubmitting(false);
     }
@@ -159,7 +131,7 @@ export default function CommandePage() {
     if (!confirmedOrder) return;
     try {
       await navigator.clipboard.writeText(confirmedOrder.whatsappMsg);
-      showToast('Message de commande copié dans le presse-papier !');
+      showToast('Message de commande copié !');
     } catch {
       showToast('Sélectionnez et copiez le texte ci-dessous.');
     }
@@ -205,7 +177,7 @@ export default function CommandePage() {
             </h1>
 
             <p style={{ color: 'var(--muted)', fontSize: '14px', lineHeight: 1.7, maxWidth: '520px', margin: '0 auto 24px' }}>
-              Votre commande <strong style={{ color: 'var(--ink)' }}>#{confirmedOrder.id}</strong> a été enregistrée dans notre système et transmise directement à notre service client sur WhatsApp au <strong>{DISPLAY_WHATSAPP}</strong>.
+              Votre commande <strong style={{ color: 'var(--ink)' }}>#{confirmedOrder.id}</strong> pour une livraison à <strong style={{ color: 'var(--ink)' }}>{confirmedOrder.lieu}</strong> a bien été enregistrée et envoyée sur WhatsApp au <strong>{DISPLAY_WHATSAPP}</strong>.
             </p>
 
             <div
@@ -218,10 +190,13 @@ export default function CommandePage() {
                 display: 'inline-block'
               }}
             >
-              <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Montant total de la commande :</div>
+              <div style={{ fontSize: '12px', color: 'var(--muted)' }}>Total des articles commandés :</div>
               <strong style={{ fontSize: '24px', color: 'var(--pink)', fontFamily: "'Playfair Display', Georgia, serif" }}>
                 {formatPrice(confirmedOrder.total)}
               </strong>
+              <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '4px' }}>
+                Frais de livraison à convenir directement sur WhatsApp
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
@@ -281,12 +256,12 @@ export default function CommandePage() {
         {/* Section Head */}
         <div className="section-head" style={{ margin: '14px 0 28px' }}>
           <div>
-            <p className="page-kicker">COMMANDE EXPRESS & SÉCURISÉE</p>
+            <p className="page-kicker">COMMANDE SIMPLE & DIRECTE</p>
             <h1 className="serif page-title">
               Finaliser votre <span className="highlight">commande</span>
             </h1>
             <p className="muted" style={{ fontSize: '13.5px' }}>
-              Indiquez votre lieu de livraison. Votre commande sera immédiatement enregistrée et envoyée sur WhatsApp au <strong>{DISPLAY_WHATSAPP}</strong>.
+              Renseignez votre lieu de livraison. Votre commande sera immédiatement enregistrée et envoyée sur WhatsApp au <strong>{DISPLAY_WHATSAPP}</strong>.
             </p>
           </div>
         </div>
@@ -295,73 +270,24 @@ export default function CommandePage() {
           {/* Main Checkout Form */}
           <div>
             <form id="orderForm" className="card checkout-form" onSubmit={handleSubmit}>
-              {/* Step 1: Lieu de Livraison */}
               <div className="checkout-step">
                 <span>01</span>
-                <h2>Lieu de livraison & Expédition</h2>
+                <h2>Lieu de livraison & Coordonnées</h2>
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '8px' }}>
-                  Choisissez votre zone de livraison <span>*</span>
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                  {(Object.keys(ZONES) as DeliveryZone[]).map(key => {
-                    const z = ZONES[key];
-                    const isSelected = zone === key;
-                    return (
-                      <button
-                        type="button"
-                        key={key}
-                        onClick={() => setZone(key)}
-                        style={{
-                          textAlign: 'left',
-                          padding: '14px',
-                          borderRadius: '12px',
-                          border: isSelected ? '2px solid var(--pink)' : '1px solid var(--stroke)',
-                          background: isSelected ? '#fef3f7' : '#ffffff',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          position: 'relative'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <strong style={{ fontSize: '13px', color: isSelected ? 'var(--pink)' : 'var(--ink)' }}>
-                            {z.label}
-                          </strong>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--pink)' }}>
-                            {formatPrice(z.fee)}
-                          </span>
-                        </div>
-                        <small style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', lineHeight: 1.4 }}>
-                          {z.sub}
-                        </small>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
+              {/* Lieu de Livraison */}
               <div className="field">
-                <label htmlFor="adresse">
-                  Adresse précise ou point de repère <span>*</span>
+                <label htmlFor="lieu">
+                  Lieu de livraison (ville, quartier ou adresse) <span>*</span>
                 </label>
                 <input
-                  id="adresse"
-                  name="adresse"
-                  placeholder="Ex. : Mermoz près de la Brioche Dorée, Immeuble A, 2e étage"
+                  id="lieu"
+                  name="lieu"
+                  placeholder="Ex. : Mermoz, Almadies, Thiès, Pikine, point de repère..."
                   required
-                  value={adresse}
-                  onChange={e => setAdresse(e.target.value)}
+                  value={lieu}
+                  onChange={e => setLieu(e.target.value)}
                 />
-              </div>
-
-              <div className="separator" style={{ margin: '24px 0' }} />
-
-              {/* Step 2: Coordonnées Cliente */}
-              <div className="checkout-step">
-                <span>02</span>
-                <h2>Vos coordonnées</h2>
               </div>
 
               <div className="field-grid">
@@ -401,7 +327,7 @@ export default function CommandePage() {
                   id="note"
                   name="note"
                   rows={2}
-                  placeholder="Ex. : Merci de me contacter avant 15h, ou précision sur votre taille..."
+                  placeholder="Ex. : Précision sur votre taille, créneau horaire souhaité..."
                   value={note}
                   onChange={e => setNote(e.target.value)}
                 />
@@ -422,7 +348,7 @@ export default function CommandePage() {
               >
                 <div style={{ fontSize: '20px' }}>💬</div>
                 <div style={{ fontSize: '12.5px', color: 'var(--muted)', lineHeight: 1.5 }}>
-                  En validant, votre commande est <strong>enregistrée dans notre boutique</strong> et transmise directement sur WhatsApp au <strong>{DISPLAY_WHATSAPP}</strong> pour confirmation immédiate avec notre équipe.
+                  En validant, votre commande est <strong>enregistrée dans notre boutique</strong> et transmise directement sur WhatsApp au <strong>{DISPLAY_WHATSAPP}</strong> pour convenir des modalités de livraison avec notre équipe.
                 </div>
               </div>
 
@@ -485,17 +411,17 @@ export default function CommandePage() {
             </div>
 
             <div className="summary-line">
-              <span>Livraison ({ZONES[zone].label})</span>
-              <strong style={{ color: 'var(--pink)' }}>{formatPrice(deliveryFee)}</strong>
+              <span>Livraison</span>
+              <span style={{ color: 'var(--muted)', fontSize: '12px' }}>À convenir sur WhatsApp</span>
             </div>
 
             <div className="summary-line total" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--line)' }}>
-              <span>Total à régler</span>
-              <strong style={{ fontSize: '20px', color: 'var(--pink)' }}>{formatPrice(grandTotal)}</strong>
+              <span>Total articles</span>
+              <strong style={{ fontSize: '20px', color: 'var(--pink)' }}>{formatPrice(totalPrice)}</strong>
             </div>
 
             <p className="summary-notice" style={{ marginTop: '16px' }}>
-              Règlement en espèces ou Wave / Orange Money à la livraison selon votre convenance.
+              Les modalités et frais de livraison seront confirmés directement avec la boutique sur WhatsApp.
             </p>
 
             <Link href="/panier" className="small-link" style={{ marginTop: '18px' }}>
