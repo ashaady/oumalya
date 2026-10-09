@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { Product, formatPrice } from '@/data/products';
@@ -60,6 +60,10 @@ export default function AdminPage() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
+  // Notifications state
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [readOrderIds, setReadOrderIds] = useState<string[]>([]);
+
   // Product Filtering & Search
   const [productSearch, setProductSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'abayas' | 'crocs'>('all');
@@ -91,7 +95,7 @@ export default function AdminPage() {
 
   // Settings State
   const [settings, setSettings] = useState({
-    storePhone: '77 123 45 67',
+    storePhone: '78 599 91 86',
     storeEmail: 'contact@oumalya.sn',
     dakarFee: 2000,
     banlieueFee: 3000,
@@ -99,7 +103,27 @@ export default function AdminPage() {
     announcement: 'Livraison express à Dakar en 24h & expédition sécurisée dans toutes les régions du Sénégal'
   });
 
-  // Check existing session
+  // Sound chime for new incoming orders
+  const playChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12); // A5
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } catch {}
+  };
+
+  // Check existing session & read orders
   useEffect(() => {
     try {
       const savedAuth = sessionStorage.getItem('oumalya_admin_auth');
@@ -110,6 +134,11 @@ export default function AdminPage() {
       const savedSettings = localStorage.getItem('oumalya_store_settings');
       if (savedSettings) {
         setSettings(JSON.parse(savedSettings));
+      }
+
+      const savedReads = localStorage.getItem('oumalya_read_orders');
+      if (savedReads) {
+        setReadOrderIds(JSON.parse(savedReads));
       }
     } catch {}
   }, []);
@@ -132,11 +161,44 @@ export default function AdminPage() {
     }
   };
 
+  // Initial load
   useEffect(() => {
     if (isAuthenticated) {
       fetchOrders();
     }
   }, [isAuthenticated]);
+
+  // Real-time automatic polling every 4.5 seconds
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/orders');
+        if (res.ok) {
+          const latest: Order[] = await res.json();
+          if (Array.isArray(latest)) {
+            setOrders(prev => {
+              if (prev.length > 0) {
+                const prevIds = new Set(prev.map(o => o.id));
+                const newArrivals = latest.filter(o => !prevIds.has(o.id));
+                if (newArrivals.length > 0) {
+                  playChime();
+                  const first = newArrivals[0];
+                  showToast(
+                    `🔔 Nouvelle commande reçue ! ${first.customer.prenom} ${first.customer.nom} (${first.customer.ville}) — ${formatPrice(first.total)}`
+                  );
+                }
+              }
+              return latest;
+            });
+          }
+        }
+      } catch {}
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, showToast]);
 
   // Auth Handler
   const handleLogin = (e: React.FormEvent) => {
@@ -184,6 +246,30 @@ export default function AdminPage() {
     }
   };
 
+  // Mark all notifications as read
+  const markAllAsRead = () => {
+    const allIds = orders.map(o => o.id);
+    setReadOrderIds(allIds);
+    try {
+      localStorage.setItem('oumalya_read_orders', JSON.stringify(allIds));
+    } catch {}
+    showToast('Toutes les commandes sont marquées comme lues');
+  };
+
+  // Open single order from notifications
+  const handleSelectNotifOrder = (order: Order) => {
+    if (!readOrderIds.includes(order.id)) {
+      const updated = [...readOrderIds, order.id];
+      setReadOrderIds(updated);
+      try {
+        localStorage.setItem('oumalya_read_orders', JSON.stringify(updated));
+      } catch {}
+    }
+    setOrderSearch(order.id);
+    setActiveTab('orders');
+    setNotifOpen(false);
+  };
+
   // Open WhatsApp to Contact Customer
   const openWhatsAppCustomer = (order: Order) => {
     const cleanPhone = order.customer.telephone.replace(/[^0-9]/g, '');
@@ -192,7 +278,7 @@ export default function AdminPage() {
       `C'est le service client OUMALYA CLOTHING. Nous vous contactons concernant votre commande #${order.id} :\n` +
       `• Articles : ${itemsSummary}\n` +
       `• Montant total : ${formatPrice(order.total)}\n` +
-      `• Adresse de livraison : ${order.customer.adresse}, ${order.customer.ville}\n\n` +
+      `• Lieu de livraison : ${order.customer.ville} (${order.customer.adresse})\n\n` +
       `Notre équipe prépare votre colis avec le plus grand soin. Êtes-vous disponible pour la livraison ? ✨`;
 
     const fullPhone = cleanPhone.startsWith('221') ? cleanPhone : `221${cleanPhone}`;
@@ -324,6 +410,12 @@ export default function AdminPage() {
       showToast('Erreur lors de la sauvegarde');
     }
   };
+
+  // Computed Unread Notifications
+  const unreadOrders = useMemo(() => {
+    const readSet = new Set(readOrderIds);
+    return orders.filter(o => !readSet.has(o.id) && o.status === 'pending');
+  }, [orders, readOrderIds]);
 
   // Computed KPIs & Stats
   const stats = useMemo(() => {
@@ -546,9 +638,9 @@ export default function AdminPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
             Commandes
-            {stats.pendingOrders > 0 && (
+            {unreadOrders.length > 0 && (
               <span className="nav-badge" style={{ background: '#d82b4f', color: '#fff' }}>
-                {stats.pendingOrders}
+                {unreadOrders.length}
               </span>
             )}
           </button>
@@ -632,6 +724,114 @@ export default function AdminPage() {
           </div>
 
           <div className="topbar-actions">
+            {/* NOTIFICATION BELL */}
+            <div className="notif-wrapper">
+              <button
+                type="button"
+                className={`notif-bell-btn ${unreadOrders.length > 0 ? 'has-new' : ''}`}
+                onClick={() => setNotifOpen(!notifOpen)}
+                title={unreadOrders.length > 0 ? `${unreadOrders.length} nouvelle(s) commande(s)` : 'Notifications de commande'}
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+                {unreadOrders.length > 0 && (
+                  <span className="notif-badge">
+                    {unreadOrders.length}
+                  </span>
+                )}
+              </button>
+
+              {/* NOTIFICATION DROPDOWN */}
+              {notifOpen && (
+                <div className="notif-dropdown">
+                  <div className="notif-header">
+                    <div className="notif-title">
+                      <span>🔔</span> Nouvelles Commandes ({unreadOrders.length})
+                    </div>
+                    {unreadOrders.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        style={{ fontSize: '11px', padding: '3px 8px' }}
+                        onClick={markAllAsRead}
+                      >
+                        Tout marquer lu
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="notif-body">
+                    {orders.slice(0, 8).map(o => {
+                      const isUnread = !readOrderIds.includes(o.id) && o.status === 'pending';
+                      return (
+                        <div
+                          key={o.id}
+                          className={`notif-item ${isUnread ? 'unread' : ''}`}
+                          onClick={() => handleSelectNotifOrder(o)}
+                        >
+                          <div className="notif-item-top">
+                            <span className="notif-customer">
+                              {isUnread && <span style={{ color: 'var(--pink)', marginRight: '5px' }}>●</span>}
+                              {o.customer.prenom} {o.customer.nom}
+                            </span>
+                            <span className="notif-time">
+                              {new Date(o.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+
+                          <div className="notif-location">
+                            📍 <strong>Lieu :</strong> {o.customer.ville}
+                            {o.customer.adresse ? ` — ${o.customer.adresse}` : ''}
+                          </div>
+
+                          <div className="notif-item-bottom">
+                            <span className="notif-total">{formatPrice(o.total)}</span>
+                            <button
+                              type="button"
+                              className="btn btn-success btn-sm"
+                              style={{ padding: '3px 8px', fontSize: '11px' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openWhatsAppCustomer(o);
+                              }}
+                            >
+                              WhatsApp
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {orders.length === 0 && (
+                      <div style={{ padding: '30px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: '12.5px' }}>
+                        Aucune commande reçue pour le moment.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="notif-footer">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      style={{ width: '100%', fontSize: '12px' }}
+                      onClick={() => {
+                        setActiveTab('orders');
+                        setNotifOpen(false);
+                      }}
+                    >
+                      Voir toutes les commandes ({orders.length}) →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {activeTab === 'products' && (
               <button onClick={openCreateProduct} className="btn btn-primary">
                 + Ajouter un produit
@@ -854,6 +1054,7 @@ export default function AdminPage() {
                         <th>N° Commande</th>
                         <th>Cliente</th>
                         <th>Téléphone</th>
+                        <th>Lieu de livraison</th>
                         <th>Articles</th>
                         <th>Total</th>
                         <th>Statut</th>
@@ -871,10 +1072,13 @@ export default function AdminPage() {
                           </td>
                           <td>
                             <strong>{o.customer.prenom} {o.customer.nom}</strong>
-                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{o.customer.ville}</div>
                           </td>
                           <td>
                             <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{o.customer.telephone}</span>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '12.5px', fontWeight: 600 }}>{o.customer.ville}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{o.customer.adresse}</div>
                           </td>
                           <td>
                             {o.items.map(it => `${it.qty}x ${it.name}`).join(', ')}
@@ -898,7 +1102,7 @@ export default function AdminPage() {
                       ))}
                       {orders.length === 0 && (
                         <tr>
-                          <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: 'var(--muted)' }}>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--muted)' }}>
                             Aucune commande enregistrée pour le moment.
                           </td>
                         </tr>
@@ -1116,7 +1320,7 @@ export default function AdminPage() {
                       <th>Réf. Commande</th>
                       <th>Date</th>
                       <th>Cliente & Contact</th>
-                      <th>Adresse de livraison</th>
+                      <th>Lieu & Adresse de livraison</th>
                       <th>Articles commandés</th>
                       <th>Total</th>
                       <th>Statut</th>
@@ -1144,11 +1348,18 @@ export default function AdminPage() {
                             {o.customer.telephone}
                           </div>
                         </td>
-                        <td style={{ maxWidth: '200px' }}>
-                          <div style={{ fontSize: '12.5px', fontWeight: 600 }}>{o.customer.ville}</div>
-                          <div style={{ fontSize: '11.5px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td style={{ maxWidth: '240px' }}>
+                          <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--ink)' }}>
+                            📍 {o.customer.ville}
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '2px' }}>
                             {o.customer.adresse}
                           </div>
+                          {o.customer.note && (
+                            <div style={{ fontSize: '11px', color: '#b78103', background: '#fff8e6', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>
+                              Note : {o.customer.note}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -1229,7 +1440,7 @@ export default function AdminPage() {
                         className="form-input"
                         value={settings.storePhone}
                         onChange={e => setSettings({ ...settings, storePhone: e.target.value })}
-                        placeholder="77 123 45 67"
+                        placeholder="78 599 91 86"
                       />
                     </div>
 

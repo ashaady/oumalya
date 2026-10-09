@@ -1023,3 +1023,170 @@
     align-items: stretch;
   }
 }
+
+/* ==================== NOTIFICATION BELL & DROPDOWN ==================== */
+.oumalya-admin .notif-wrapper {
+  position: relative;
+}
+
+.oumalya-admin .notif-bell-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--stroke);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.oumalya-admin .notif-bell-btn:hover {
+  background: var(--pink-soft);
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.oumalya-admin .notif-bell-btn.has-new {
+  animation: bellRing 2.4s infinite ease-in-out;
+}
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0); }
+  4% { transform: rotate(14deg); }
+  8% { transform: rotate(-12deg); }
+  12% { transform: rotate(10deg); }
+  16% { transform: rotate(-8deg); }
+  20% { transform: rotate(4deg); }
+  24% { transform: rotate(0); }
+}
+
+.oumalya-admin .notif-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 100px;
+  background: #d82b4f;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(216, 43, 79, 0.4);
+}
+
+.oumalya-admin .notif-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 380px;
+  max-width: 90vw;
+  background: #ffffff;
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(18, 14, 16, 0.12);
+  z-index: 100;
+  overflow: hidden;
+  animation: notifFadeIn 0.2s ease-out;
+}
+
+@keyframes notifFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.oumalya-admin .notif-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--stroke-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fdfafb;
+}
+
+.oumalya-admin .notif-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oumalya-admin .notif-body {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.oumalya-admin .notif-item {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--stroke-light);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.15s;
+  cursor: pointer;
+  text-align: left;
+}
+
+.oumalya-admin .notif-item:hover {
+  background: #fdf6f8;
+}
+
+.oumalya-admin .notif-item.unread {
+  background: #fffcfd;
+  border-left: 3px solid var(--pink);
+}
+
+.oumalya-admin .notif-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.oumalya-admin .notif-customer {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.oumalya-admin .notif-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.oumalya-admin .notif-location {
+  font-size: 12px;
+  color: #4a4044;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.oumalya-admin .notif-item-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.oumalya-admin .notif-total {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pink);
+}
+
+.oumalya-admin .notif-footer {
+  padding: 10px 16px;
+  background: #fdfafb;
+  border-top: 1px solid var(--stroke-light);
+  text-align: center;
+}
