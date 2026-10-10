@@ -1,9 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { Product, formatPrice } from '@/data/products';
+
+const PRESET_IMAGES = [
+  { label: 'Abaya Soie Rose (Hero)', url: '/images/hero-abaya-pink.jpg' },
+  { label: 'Abaya Élégante Noire', url: '/images/product-abaya-noire.jpg' },
+  { label: 'Abaya Douceur Taupe', url: '/images/product-abaya-taupe.jpg' },
+  { label: 'Crocs Hello Kitty Noir', url: '/images/product-crocs-noir.jpg' },
+  { label: 'Crocs Hello Kitty Rose', url: '/images/product-crocs-rose.jpg' },
+  { label: 'Abaya Collection Index', url: '/images/index-abaya-noire.jpg' },
+  { label: 'Abaya Taupe Index', url: '/images/index-abaya-taupe.jpg' },
+  { label: 'Crocs Charms Promo', url: '/images/promo-crocs.jpg' }
+];
 
 export interface OrderItem {
   id: string;
@@ -71,6 +82,8 @@ export default function AdminPage() {
   const [productModalMode, setProductModalMode] = useState<'create' | 'edit'>('create');
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
   // Product Form Data
@@ -289,32 +302,75 @@ export default function AdminPage() {
     setIsProductModalOpen(true);
   };
 
-  // Handle Image Upload
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Process and upload any chosen image file (from input or drag & drop)
+  const processImageFile = async (file: File) => {
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      showToast('Veuillez sélectionner un fichier image valide (JPG, PNG, WEBP...)');
+      return;
+    }
+
     setIsUploading(true);
+
+    // 1. Instant 0ms visual preview via Object URL
     try {
-      const uploadData = new FormData();
-      uploadData.append('file', file);
+      const previewUrl = URL.createObjectURL(file);
+      setProductForm(prev => ({ ...prev, img: previewUrl }));
+    } catch {}
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: uploadData
-      });
+    // 2. Read as Base64 Data URL for bulletproof fallback
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result as string;
 
-      const json = await res.json();
-      if (json.success && json.url) {
-        setProductForm(prev => ({ ...prev, img: json.url }));
-        showToast('Image téléchargée avec succès !');
-      } else {
-        showToast(json.error || 'Erreur lors du téléchargement');
+      try {
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadData
+        });
+
+        const json = await res.json();
+        if (json.success && json.url) {
+          setProductForm(prev => ({ ...prev, img: json.url }));
+          showToast('✓ Photo enregistrée avec succès !');
+        } else {
+          setProductForm(prev => ({ ...prev, img: base64Data }));
+          showToast('Photo appliquée localement');
+        }
+      } catch {
+        setProductForm(prev => ({ ...prev, img: base64Data }));
+        showToast('Photo appliquée localement');
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
-    } catch {
-      showToast('Échec du téléversement de l\'image');
-    } finally {
+    };
+    reader.onerror = () => {
       setIsUploading(false);
+      showToast('Erreur lors de la lecture du fichier image');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImageFile(file);
+    }
+  };
+
+  const handleDropImage = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processImageFile(file);
     }
   };
 
@@ -1087,7 +1143,12 @@ export default function AdminPage() {
                     {filteredProducts.map(p => (
                       <tr key={p.id}>
                         <td>
-                          <div className="product-cell">
+                          <div
+                            className="product-cell"
+                            onClick={() => openEditProduct(p)}
+                            style={{ cursor: 'pointer' }}
+                            title="Cliquez pour changer la photo ou modifier ce produit"
+                          >
                             <img src={p.img || p.image} alt={p.name} className="product-thumb" />
                             <div>
                               <strong style={{ display: 'block', fontSize: '13.5px' }}>{p.name}</strong>
@@ -1143,9 +1204,9 @@ export default function AdminPage() {
                             <button
                               onClick={() => openEditProduct(p)}
                               className="btn btn-outline btn-sm"
-                              title="Modifier la fiche produit"
+                              title="Modifier la photo ou les détails de ce modèle"
                             >
-                              Modifier
+                              📷 Modifier
                             </button>
                             <button
                               onClick={() => setDeletingProduct(p)}
@@ -1502,42 +1563,207 @@ export default function AdminPage() {
                       />
                     </div>
 
-                    {/* Image Upload Area */}
+                    {/* Image Selection Area */}
                     <div className="form-field full">
-                      <label className="form-label">Photographie du produit</label>
-                      <div className="upload-card">
-                        <img
-                          src={productForm.img}
-                          alt="Aperçu"
-                          className="upload-thumb"
-                          onError={e => {
-                            (e.target as HTMLImageElement).src = '/images/hero-abaya-pink.jpg';
-                          }}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <input
-                            type="text"
-                            className="form-input"
-                            style={{ marginBottom: '8px', fontSize: '12px' }}
-                            placeholder="URL de l'image ou téléversez ci-dessous"
-                            value={productForm.img}
-                            onChange={e => setProductForm({ ...productForm, img: e.target.value })}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label className="form-label" style={{ margin: 0 }}>
+                          Photographie du modèle *
+                        </label>
+                        {isUploading && (
+                          <span style={{ color: 'var(--pink)', fontSize: '11.5px', fontWeight: 600 }}>
+                            ⏳ Téléversement de l&apos;image en cours...
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Dropzone & Direct File Pick Card */}
+                      <div
+                        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                        onDragLeave={() => setIsDragging(false)}
+                        onDrop={handleDropImage}
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          border: isDragging ? '2px dashed var(--pink)' : '2px dashed #f2b9cf',
+                          background: isDragging ? '#fef4f7' : '#fcf8fa',
+                          borderRadius: '16px',
+                          padding: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '16px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          marginBottom: '14px'
+                        }}
+                      >
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <img
+                            src={productForm.img}
+                            alt="Aperçu sélectionné"
+                            className="upload-thumb"
+                            style={{
+                              width: '84px',
+                              height: '84px',
+                              borderRadius: '12px',
+                              objectFit: 'cover',
+                              border: '2px solid var(--pink)',
+                              boxShadow: '0 4px 12px rgba(235,92,142,0.15)',
+                              display: 'block'
+                            }}
+                            onError={e => {
+                              (e.target as HTMLImageElement).src = '/images/hero-abaya-pink.jpg';
+                            }}
                           />
-                          <div className="file-btn">
+                          {isUploading && (
+                            <div style={{
+                              position: 'absolute',
+                              inset: 0,
+                              background: 'rgba(255,255,255,0.75)',
+                              borderRadius: '12px',
+                              display: 'grid',
+                              placeItems: 'center',
+                              fontSize: '18px'
+                            }}>
+                              ⌛
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '18px' }}>📸</span>
+                            <strong style={{ fontSize: '13.5px', color: 'var(--ink)' }}>
+                              Cliquez ici ou glissez votre photo
+                            </strong>
+                          </div>
+                          <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'var(--muted)', lineHeight: 1.4 }}>
+                            Glissez un fichier ou cliquez pour parcourir les dossiers de votre PC / smartphone (JPG, PNG, WEBP).
+                          </p>
+
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             <button
                               type="button"
-                              className="btn btn-outline btn-sm"
+                              className="btn btn-primary btn-sm"
                               disabled={isUploading}
+                              onClick={e => {
+                                e.stopPropagation();
+                                fileInputRef.current?.click();
+                              }}
+                              style={{ fontSize: '12px', padding: '6px 14px' }}
                             >
-                              {isUploading ? 'Téléchargement...' : '📁 Choisir une photo depuis votre PC'}
+                              {isUploading ? 'Traitement en cours...' : '📁 Choisir depuis mon appareil'}
                             </button>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleFileUpload}
-                              disabled={isUploading}
-                            />
                           </div>
+
+                          {/* Hidden file input controlled via fileInputRef */}
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={handleFileUpload}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Direct URL input */}
+                      <div style={{ marginBottom: '14px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--muted)', marginBottom: '4px' }}>
+                          Lien ou URL directe de l&apos;image :
+                        </label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          style={{ fontSize: '12px', padding: '8px 12px' }}
+                          placeholder="Ex: /images/uploads/... ou lien web https://..."
+                          value={productForm.img}
+                          onChange={e => setProductForm({ ...productForm, img: e.target.value })}
+                        />
+                      </div>
+
+                      {/* Preset Gallery */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', marginBottom: '8px' }}>
+                          ✨ Ou sélectionnez directement une photo de la collection :
+                        </label>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))',
+                          gap: '8px',
+                          maxHeight: '170px',
+                          overflowY: 'auto',
+                          padding: '8px',
+                          background: '#fff',
+                          border: '1px solid var(--stroke-light)',
+                          borderRadius: '12px'
+                        }}>
+                          {PRESET_IMAGES.map((preset, idx) => {
+                            const isSelected = productForm.img === preset.url;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setProductForm({ ...productForm, img: preset.url });
+                                  showToast(`Photo "${preset.label}" sélectionnée`);
+                                }}
+                                title={preset.label}
+                                style={{
+                                  border: isSelected ? '2px solid var(--pink)' : '1px solid var(--stroke)',
+                                  padding: '3px',
+                                  borderRadius: '8px',
+                                  background: isSelected ? '#fef4f7' : '#fff',
+                                  cursor: 'pointer',
+                                  textAlign: 'center',
+                                  position: 'relative',
+                                  outline: 'none',
+                                  boxShadow: isSelected ? '0 0 0 2px rgba(235,92,142,0.3)' : 'none',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <img
+                                  src={preset.url}
+                                  alt={preset.label}
+                                  style={{
+                                    width: '100%',
+                                    height: '54px',
+                                    objectFit: 'cover',
+                                    borderRadius: '6px',
+                                    display: 'block'
+                                  }}
+                                />
+                                <span style={{
+                                  display: 'block',
+                                  fontSize: '9.5px',
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? 'var(--pink)' : 'var(--muted)',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  marginTop: '3px'
+                                }}>
+                                  {preset.label.split(' ')[0]}
+                                </span>
+                                {isSelected && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '2px',
+                                    right: '2px',
+                                    background: 'var(--pink)',
+                                    color: '#fff',
+                                    borderRadius: '50%',
+                                    width: '16px',
+                                    height: '16px',
+                                    fontSize: '10px',
+                                    fontWeight: 'bold',
+                                    display: 'grid',
+                                    placeItems: 'center'
+                                  }}>
+                                    ✓
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
