@@ -298,10 +298,11 @@ export default function AdminPage() {
   // Open Product Modal for Edit
   const openEditProduct = (p: Product) => {
     setProductModalMode('edit');
+    const cat = (p.category || p.cat || 'abayas') as 'abayas' | 'crocs';
     setProductForm({
       id: p.id,
       name: p.name,
-      category: p.category,
+      category: cat,
       price: p.price,
       color: p.color || 'Noir',
       badge: p.badge || p.badges || 'Nouveauté',
@@ -467,8 +468,8 @@ export default function AdminPage() {
       .reduce((sum, o) => sum + (o.total || 0), 0);
     const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
-    const abayasCount = products.filter(p => p.category === 'abayas').length;
-    const crocsCount = products.filter(p => p.category === 'crocs').length;
+    const abayasCount = products.filter(p => (p.category || p.cat) === 'abayas').length;
+    const crocsCount = products.filter(p => (p.category || p.cat) === 'crocs').length;
 
     return {
       totalOrders,
@@ -510,14 +511,15 @@ export default function AdminPage() {
   // Filtered Products
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchCat = categoryFilter === 'all' || p.category === categoryFilter;
+      const pCat = p.category || p.cat || 'abayas';
+      const matchCat = categoryFilter === 'all' || pCat === categoryFilter;
       const q = productSearch.toLowerCase().trim();
       const matchSearch =
         !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.color.toLowerCase().includes(q) ||
-        p.price.toString().includes(q) ||
-        p.id.toLowerCase().includes(q);
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.color && p.color.toLowerCase().includes(q)) ||
+        (p.price !== undefined && p.price.toString().includes(q)) ||
+        (p.id && p.id.toLowerCase().includes(q));
       return matchCat && matchSearch;
     });
   }, [products, categoryFilter, productSearch]);
@@ -1127,13 +1129,13 @@ export default function AdminPage() {
                     className={`filter-pill ${categoryFilter === 'abayas' ? 'active' : ''}`}
                     onClick={() => setCategoryFilter('abayas')}
                   >
-                    Abayas ({products.filter(p => p.category === 'abayas').length})
+                    Abayas ({products.filter(p => (p.category || p.cat) === 'abayas').length})
                   </button>
                   <button
                     className={`filter-pill ${categoryFilter === 'crocs' ? 'active' : ''}`}
                     onClick={() => setCategoryFilter('crocs')}
                   >
-                    Crocs ({products.filter(p => p.category === 'crocs').length})
+                    Crocs ({products.filter(p => (p.category || p.cat) === 'crocs').length})
                   </button>
                 </div>
 
@@ -1174,9 +1176,34 @@ export default function AdminPage() {
                           </div>
                         </td>
                         <td>
-                          <span className={`category-tag ${p.category}`}>
-                            {p.category === 'crocs' ? 'Crocs' : 'Abaya'}
-                          </span>
+                          <select
+                            value={(p.category || p.cat) === 'crocs' ? 'crocs' : 'abayas'}
+                            onChange={e => {
+                              const newCat = e.target.value as 'abayas' | 'crocs';
+                              updateProduct({
+                                id: p.id,
+                                category: newCat,
+                                cat: newCat,
+                                label: newCat === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION',
+                                catLabel: newCat === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION',
+                                sizes: newCat === 'crocs' ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL']
+                              });
+                            }}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: '8px',
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              border: '1px solid var(--stroke)',
+                              background: (p.category || p.cat) === 'crocs' ? '#e7f5ff' : '#fdf2f5',
+                              color: (p.category || p.cat) === 'crocs' ? '#1971c2' : '#d6336c',
+                              cursor: 'pointer'
+                            }}
+                            title="Changer rapidement la catégorie (Abayas ↔ Crocs)"
+                          >
+                            <option value="abayas">👗 Abayas</option>
+                            <option value="crocs">👡 Crocs</option>
+                          </select>
                         </td>
                         <td>
                           <strong style={{ color: 'var(--pink)', fontSize: '14px' }}>

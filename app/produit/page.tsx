@@ -91,7 +91,7 @@ function ProductContent() {
               Choisir une taille / pointure <span style={{ color: 'var(--pink)' }}>*</span>
             </div>
             <div className="size-row" id="productSizes">
-              {p.sizes.map(size => (
+              {(Array.isArray(p.sizes) && p.sizes.length ? p.sizes : ['Standard']).map(size => (
                 <button
                   key={size}
                   className="size-btn"

@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT: Update existing product
+// PUT: Update existing product (or upsert if added locally)
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -125,32 +125,32 @@ export async function PUT(req: NextRequest) {
 
     const products = getStoredProducts();
     const index = products.findIndex(p => p.id === body.id);
-    if (index === -1) {
-      return NextResponse.json({ error: 'Produit non trouvé' }, { status: 404 });
-    }
+    const current: Partial<Product> = index !== -1 ? products[index] : {};
 
-    const current = products[index];
-    const cat = body.cat || body.category || current.cat;
+    const cat = (body.cat || body.category || current.cat || current.category || 'crocs') as 'abayas' | 'crocs';
+    const isCrocs = cat === 'crocs';
+
     const updatedProduct: Product = {
-      ...current,
-      name: body.name !== undefined ? body.name : current.name,
+      id: body.id,
+      name: body.name !== undefined ? body.name : (current.name || 'Produit'),
       cat,
       category: cat,
-      label: body.label !== undefined ? body.label : current.label,
-      catLabel: body.catLabel !== undefined ? body.catLabel : current.catLabel,
-      price: body.price !== undefined ? Math.max(0, Number(body.price) || 0) : current.price,
-      color: body.color !== undefined ? body.color : current.color,
-      sizes: body.sizes !== undefined ? (Array.isArray(body.sizes) ? body.sizes : [body.sizes]) : current.sizes,
-      desc: body.desc !== undefined ? body.desc : (body.description !== undefined ? body.description : current.desc),
-      description: body.description !== undefined ? body.description : (body.desc !== undefined ? body.desc : current.description),
-      detail: body.detail !== undefined ? body.detail : current.detail,
-      badges: body.badges !== undefined ? body.badges : (body.badge !== undefined ? body.badge : current.badges),
-      badge: body.badge !== undefined ? body.badge : (body.badges !== undefined ? body.badges : current.badge),
-      img: body.img !== undefined ? body.img : (body.image !== undefined ? body.image : current.img),
-      image: body.image !== undefined ? body.image : (body.img !== undefined ? body.img : current.image),
+      label: body.label !== undefined ? body.label : (isCrocs ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION'),
+      catLabel: body.catLabel !== undefined ? body.catLabel : (isCrocs ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION'),
+      price: body.price !== undefined ? Math.max(0, Number(body.price) || 0) : (current.price || 15000),
+      color: body.color !== undefined ? body.color : (current.color || 'Noir'),
+      sizes: body.sizes !== undefined ? (Array.isArray(body.sizes) ? body.sizes : [body.sizes]) : (current.sizes || (isCrocs ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL'])),
+      desc: body.desc !== undefined ? body.desc : (body.description !== undefined ? body.description : (current.desc || current.description || '')),
+      description: body.description !== undefined ? body.description : (body.desc !== undefined ? body.desc : (current.description || current.desc || '')),
+      detail: body.detail !== undefined ? body.detail : (current.detail || 'Disponibilité à confirmer avec la boutique.'),
+      badges: body.badges !== undefined ? body.badges : (body.badge !== undefined ? body.badge : (current.badges || current.badge || 'Nouveauté')),
+      badge: body.badge !== undefined ? body.badge : (body.badges !== undefined ? body.badges : (current.badge || current.badges || 'Nouveauté')),
+      img: body.img !== undefined ? body.img : (body.image !== undefined ? body.image : (current.img || current.image || '/images/hero-abaya-pink.jpg')),
+      image: body.image !== undefined ? body.image : (body.img !== undefined ? body.img : (current.image || current.img || '/images/hero-abaya-pink.jpg')),
+      order: current.order || (products.length + 1)
     };
 
-    // Save to SQLite
+    // Save to SQLite (upsert)
     try {
       saveProductToDb(updatedProduct);
     } catch (e) {
@@ -158,11 +158,16 @@ export async function PUT(req: NextRequest) {
     }
 
     // Save to products.json if writable
-    products[index] = updatedProduct;
+    if (index !== -1) {
+      products[index] = updatedProduct;
+    } else {
+      products.push(updatedProduct);
+    }
     saveProducts(products);
 
     return NextResponse.json({ success: true, product: updatedProduct });
   } catch (error) {
+    console.error('Error updating product:', error);
     return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
   }
 }

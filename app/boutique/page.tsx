@@ -55,10 +55,11 @@ function BoutiqueContent() {
 
   const filteredProducts = useMemo(() => {
     let list = products.filter(p => {
+      const pCat = p.category || p.cat || 'abayas';
       const matchesCat =
         category === 'all' ||
         (category === 'favorites' && favorites[p.id]) ||
-        category === p.category;
+        category === pCat;
 
       const normQuery = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const normName = p.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
