@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { Product, PRODUCTS as DEFAULT_PRODUCTS } from '@/data/products';
 
 const dataDir = path.join(process.cwd(), 'data');
 if (!fs.existsSync(dataDir)) {
@@ -48,7 +49,60 @@ function initDbConnection(): Database.Database {
         created_at TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_images_created ON images(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        cat TEXT NOT NULL,
+        category TEXT NOT NULL,
+        label TEXT NOT NULL,
+        catLabel TEXT NOT NULL,
+        price INTEGER NOT NULL,
+        color TEXT,
+        sizes TEXT,
+        desc TEXT,
+        description TEXT,
+        detail TEXT,
+        badges TEXT,
+        badge TEXT,
+        img TEXT,
+        image TEXT,
+        order_num INTEGER,
+        created_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_products_order ON products(order_num ASC);
     `);
+
+    // Seed initial products if table is empty
+    const row = db.prepare('SELECT count(*) as count FROM products').get() as { count: number } | undefined;
+    if (!row || row.count === 0) {
+      const insert = db.prepare(`
+        INSERT INTO products (id, name, cat, category, label, catLabel, price, color, sizes, desc, description, detail, badges, badge, img, image, order_num, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const p of DEFAULT_PRODUCTS) {
+        insert.run(
+          p.id,
+          p.name,
+          p.cat || p.category,
+          p.category || p.cat,
+          p.label,
+          p.catLabel,
+          p.price,
+          p.color || 'Noir',
+          JSON.stringify(p.sizes || []),
+          p.desc || '',
+          p.description || '',
+          p.detail || '',
+          p.badges || p.badge || '',
+          p.badge || p.badges || '',
+          p.img || p.image || '',
+          p.image || p.img || '',
+          p.order || 0,
+          new Date().toISOString()
+        );
+      }
+    }
   } catch {}
 
   return db;
@@ -133,4 +187,115 @@ export function deleteImageFromDb(id: string): boolean {
   const stmt = db.prepare(`DELETE FROM images WHERE id = ? OR filename = ?`);
   const result = stmt.run(cleanId, id);
   return result.changes > 0;
+}
+
+export function getProductsFromDb(): Product[] {
+  try {
+    const db = getDb();
+    const rows = db.prepare('SELECT * FROM products ORDER BY order_num ASC, created_at ASC').all() as any[];
+    if (rows && rows.length > 0) {
+      return rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        cat: r.cat as 'abayas' | 'crocs',
+        category: r.category as 'abayas' | 'crocs',
+        label: r.label,
+        catLabel: r.catLabel,
+        price: r.price,
+        color: r.color || 'Noir',
+        sizes: r.sizes ? JSON.parse(r.sizes) : ['S', 'M', 'L', 'XL'],
+        desc: r.desc || '',
+        description: r.description || '',
+        detail: r.detail || '',
+        badges: r.badges || r.badge || 'Nouveauté',
+        badge: r.badge || r.badges || 'Nouveauté',
+        img: r.img || r.image || '/images/hero-abaya-pink.jpg',
+        image: r.image || r.img || '/images/hero-abaya-pink.jpg',
+        order: r.order_num || 0
+      }));
+    }
+  } catch (err) {
+    console.error('Error reading products from SQLite:', err);
+  }
+  return DEFAULT_PRODUCTS;
+}
+
+export function saveProductToDb(p: Product): Product {
+  try {
+    const db = getDb();
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO products (id, name, cat, category, label, catLabel, price, color, sizes, desc, description, detail, badges, badge, img, image, order_num, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(
+      p.id,
+      p.name,
+      p.cat || p.category,
+      p.category || p.cat,
+      p.label,
+      p.catLabel,
+      p.price,
+      p.color || 'Noir',
+      JSON.stringify(p.sizes || []),
+      p.desc || '',
+      p.description || '',
+      p.detail || '',
+      p.badges || p.badge || '',
+      p.badge || p.badges || '',
+      p.img || p.image || '',
+      p.image || p.img || '',
+      p.order || 0,
+      new Date().toISOString()
+    );
+  } catch (err) {
+    console.error('Error saving product to SQLite:', err);
+  }
+  return p;
+}
+
+export function deleteProductFromDb(id: string): boolean {
+  try {
+    const db = getDb();
+    const stmt = db.prepare('DELETE FROM products WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch {
+    return false;
+  }
+}
+
+export function resetProductsInDb(defaults: Product[]): Product[] {
+  try {
+    const db = getDb();
+    db.exec('DELETE FROM products;');
+    const insert = db.prepare(`
+      INSERT INTO products (id, name, cat, category, label, catLabel, price, color, sizes, desc, description, detail, badges, badge, img, image, order_num, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const p of defaults) {
+      insert.run(
+        p.id,
+        p.name,
+        p.cat || p.category,
+        p.category || p.cat,
+        p.label,
+        p.catLabel,
+        p.price,
+        p.color || 'Noir',
+        JSON.stringify(p.sizes || []),
+        p.desc || '',
+        p.description || '',
+        p.detail || '',
+        p.badges || p.badge || '',
+        p.badge || p.badges || '',
+        p.img || p.image || '',
+        p.image || p.img || '',
+        p.order || 0,
+        new Date().toISOString()
+      );
+    }
+  } catch (err) {
+    console.error('Error resetting products in SQLite:', err);
+  }
+  return defaults;
 }

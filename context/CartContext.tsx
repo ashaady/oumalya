@@ -78,27 +78,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch products from API and sync localStorage
   const refreshProducts = useCallback(async () => {
-    try {
-      const res = await fetch('/api/products');
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length) {
-          setProducts(data);
-          try {
-            localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data));
-          } catch {}
-          return;
-        }
-      }
-    } catch {}
-
-    // Fallback to localStorage if API unavailable
+    // 1. Immediately read cached products from localStorage
+    let currentProducts = DEFAULT_PRODUCTS;
     try {
       const cached = localStorage.getItem(PRODUCTS_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length) {
+          currentProducts = parsed;
           setProducts(parsed);
+        }
+      }
+    } catch {}
+
+    // 2. Fetch from API and merge intelligently
+    try {
+      const res = await fetch('/api/products');
+      if (res.ok) {
+        const apiData: Product[] = await res.json();
+        if (Array.isArray(apiData) && apiData.length) {
+          setProducts(prev => {
+            const apiIds = new Set(apiData.map(p => p.id));
+            const uniqueLocal = prev.filter(p => !apiIds.has(p.id));
+            const merged = [...apiData, ...uniqueLocal];
+            try {
+              localStorage.setItem(PRODUCTS_KEY, JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+          return;
         }
       }
     } catch {}

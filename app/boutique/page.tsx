@@ -76,7 +76,7 @@ function BoutiqueContent() {
     }
 
     return list;
-  }, [category, query, sort, favorites]);
+  }, [products, category, query, sort, favorites]);
 
   const openQuick = (p: Product) => {
     setModalProduct(p);

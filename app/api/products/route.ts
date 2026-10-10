@@ -2,10 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { Product, PRODUCTS as DEFAULT_PRODUCTS } from '@/data/products';
+import {
+  getProductsFromDb,
+  saveProductToDb,
+  deleteProductFromDb,
+  resetProductsInDb
+} from '@/lib/db';
 
 const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
 
 function getStoredProducts(): Product[] {
+  // 1. Try SQLite database first
+  try {
+    const dbProducts = getProductsFromDb();
+    if (Array.isArray(dbProducts) && dbProducts.length > 0) {
+      return dbProducts;
+    }
+  } catch {}
+
+  // 2. Fallback to products.json if available
   try {
     if (fs.existsSync(dataFilePath)) {
       const content = fs.readFileSync(dataFilePath, 'utf8');
@@ -28,8 +43,7 @@ function saveProducts(products: Product[]): boolean {
     }
     fs.writeFileSync(dataFilePath, JSON.stringify(products, null, 2), 'utf8');
     return true;
-  } catch (error) {
-    console.error('Error writing products.json:', error);
+  } catch {
     return false;
   }
 }
@@ -40,6 +54,9 @@ export async function GET(req: NextRequest) {
   const reset = searchParams.get('reset');
 
   if (reset === 'true') {
+    try {
+      resetProductsInDb(DEFAULT_PRODUCTS);
+    } catch {}
     saveProducts(DEFAULT_PRODUCTS);
     return NextResponse.json(DEFAULT_PRODUCTS);
   }
@@ -81,6 +98,14 @@ export async function POST(req: NextRequest) {
       order: products.length + 1
     };
 
+    // Save to SQLite
+    try {
+      saveProductToDb(newProduct);
+    } catch (e) {
+      console.warn('SQLite product save error:', e);
+    }
+
+    // Save to products.json if writable
     products.push(newProduct);
     saveProducts(products);
 
@@ -125,6 +150,14 @@ export async function PUT(req: NextRequest) {
       image: body.image !== undefined ? body.image : (body.img !== undefined ? body.img : current.image),
     };
 
+    // Save to SQLite
+    try {
+      saveProductToDb(updatedProduct);
+    } catch (e) {
+      console.warn('SQLite product update error:', e);
+    }
+
+    // Save to products.json if writable
     products[index] = updatedProduct;
     saveProducts(products);
 
@@ -142,6 +175,12 @@ export async function DELETE(req: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: 'ID produit requis' }, { status: 400 });
+    }
+
+    try {
+      deleteProductFromDb(id);
+    } catch (e) {
+      console.warn('SQLite product delete error:', e);
     }
 
     let products = getStoredProducts();
