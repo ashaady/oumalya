@@ -12,14 +12,33 @@ const dbPath = path.join(dataDir, 'oumalya.db');
 // Singleton database instance
 let dbInstance: Database.Database | null = null;
 
-export function getDb(): Database.Database {
-  if (!dbInstance) {
-    dbInstance = new Database(dbPath);
-    // Performance: WAL mode for fast concurrent reads and writes
-    dbInstance.pragma('journal_mode = WAL');
+function initDbConnection(): Database.Database {
+  let db: Database.Database;
+  const isVercel = process.env.VERCEL === '1';
 
-    // Create images table
-    dbInstance.exec(`
+  if (isVercel) {
+    try {
+      const tmpPath = path.join('/tmp', 'oumalya.db');
+      if (!fs.existsSync(tmpPath) && fs.existsSync(dbPath)) {
+        fs.copyFileSync(dbPath, tmpPath);
+      }
+      db = new Database(tmpPath);
+    } catch {
+      db = new Database(dbPath, { readonly: true });
+    }
+  } else {
+    try {
+      db = new Database(dbPath);
+      try {
+        db.pragma('journal_mode = WAL');
+      } catch {}
+    } catch {
+      db = new Database(dbPath, { readonly: true });
+    }
+  }
+
+  try {
+    db.exec(`
       CREATE TABLE IF NOT EXISTS images (
         id TEXT PRIMARY KEY,
         filename TEXT NOT NULL,
@@ -30,6 +49,14 @@ export function getDb(): Database.Database {
       );
       CREATE INDEX IF NOT EXISTS idx_images_created ON images(created_at DESC);
     `);
+  } catch {}
+
+  return db;
+}
+
+export function getDb(): Database.Database {
+  if (!dbInstance) {
+    dbInstance = initDbConnection();
   }
   return dbInstance;
 }
