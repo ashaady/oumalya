@@ -177,17 +177,22 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID produit requis' }, { status: 400 });
     }
 
-    try {
-      deleteProductFromDb(id);
-    } catch (e) {
-      console.warn('SQLite product delete error:', e);
-    }
-
     let products = getStoredProducts();
     const initialLength = products.length;
+    const exists = products.some(p => p.id === id);
+
+    const deletedFromDb = (() => {
+      try {
+        return deleteProductFromDb(id);
+      } catch (e) {
+        console.warn('SQLite product delete error:', e);
+        return false;
+      }
+    })();
+
     products = products.filter(p => p.id !== id);
 
-    if (products.length === initialLength) {
+    if (!exists && !deletedFromDb && products.length === initialLength) {
       return NextResponse.json({ error: 'Produit non trouvé' }, { status: 404 });
     }
 

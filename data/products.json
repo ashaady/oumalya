@@ -8,7 +8,14 @@
     "catLabel": "CROCS · COLLECTION",
     "price": 15000,
     "color": "Noir",
-    "sizes": ["36", "37", "38", "39", "40", "41"],
+    "sizes": [
+      "36",
+      "37",
+      "38",
+      "39",
+      "40",
+      "41"
+    ],
     "desc": "Une paire noire ornée de charms inspirés de Hello Kitty, parfaite pour ajouter une touche de fantaisie au quotidien.",
     "description": "Une paire noire ornée de charms inspirés de Hello Kitty, parfaite pour ajouter une touche de fantaisie au quotidien.",
     "detail": "Sabots avec bride arrière pivotante et ornements décoratifs. Disponibilité des pointures à confirmer lors de la commande.",
@@ -27,7 +34,14 @@
     "catLabel": "CROCS · COLLECTION",
     "price": 15000,
     "color": "Rose",
-    "sizes": ["36", "37", "38", "39", "40", "41"],
+    "sizes": [
+      "36",
+      "37",
+      "38",
+      "39",
+      "40",
+      "41"
+    ],
     "desc": "Un rose tendre et de petits charms colorés pour une allure fraîche, ludique et confortable.",
     "description": "Un rose tendre et de petits charms colorés pour une allure fraîche, ludique et confortable.",
     "detail": "Sabots roses à bride pivotante avec décorations. Disponibilité des pointures à confirmer lors de la commande.",
@@ -46,7 +60,12 @@
     "catLabel": "ABAYAS · COLLECTION",
     "price": 25000,
     "color": "Noir",
-    "sizes": ["S", "M", "L", "XL"],
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
     "desc": "Une silhouette fluide et intemporelle, conçue pour une élégance simple au quotidien.",
     "description": "Une silhouette fluide et intemporelle, conçue pour une élégance simple au quotidien.",
     "detail": "Photographie illustrative. Matière, coupe exacte et tailles disponibles à confirmer avant la commande.",
@@ -65,7 +84,12 @@
     "catLabel": "ABAYAS · COLLECTION",
     "price": 25000,
     "color": "Taupe",
-    "sizes": ["S", "M", "L", "XL"],
+    "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
     "desc": "Une abaya ample au coloris taupe délicat pour une garde-robe chic et facile à porter.",
     "description": "Une abaya ample au coloris taupe délicat pour une garde-robe chic et facile à porter.",
     "detail": "Photographie illustrative. Matière, coupe exacte et tailles disponibles à confirmer avant la commande.",
