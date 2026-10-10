@@ -6,6 +6,9 @@ const nextConfig = {
   images: {
     unoptimized: true
   },
+  experimental: {
+    serverComponentsExternalPackages: ['better-sqlite3']
+  },
   webpack: (config) => {
     config.resolve.alias['@'] = path.resolve(__dirname);
     return config;

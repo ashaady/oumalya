@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { saveImageToDb } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,30 +14,34 @@ export async function POST(req: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // Sanitize and create unique filename
     const originalName = file.name || 'image.jpg';
-    const ext = path.extname(originalName).toLowerCase() || '.jpg';
-    const cleanBase = path.basename(originalName, ext)
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '-')
-      .replace(/-+/g, '-')
-      .slice(0, 30);
+    const mimeType = file.type || 'image/jpeg';
 
-    const filename = `${cleanBase}-${Date.now()}${ext}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'images', 'uploads');
+    // 1. Save directly into SQLite Database (persistent binary storage)
+    const imageMeta = saveImageToDb(originalName, mimeType, buffer);
 
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    // 2. Also keep a disk file copy as fast static fallback
+    try {
+      const uploadDir = path.join(process.cwd(), 'public', 'images', 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const filePath = path.join(uploadDir, imageMeta.filename);
+      fs.writeFileSync(filePath, buffer);
+    } catch (diskErr) {
+      console.warn('Backup disk write warning:', diskErr);
     }
 
-    const filePath = path.join(uploadDir, filename);
-    fs.writeFileSync(filePath, buffer);
-
-    const publicUrl = `/images/uploads/${filename}`;
-    return NextResponse.json({ success: true, url: publicUrl });
+    return NextResponse.json({
+      success: true,
+      url: imageMeta.url,
+      id: imageMeta.id,
+      filename: imageMeta.filename,
+      size: imageMeta.size,
+      sqlite: true
+    });
   } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Erreur lors du téléchargement de l\'image' }, { status: 500 });
+    console.error('Upload SQLite error:', error);
+    return NextResponse.json({ error: 'Erreur lors de l\'enregistrement dans la base de données' }, { status: 500 });
   }
 }
