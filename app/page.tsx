@@ -10,6 +10,7 @@ export default function HomePage() {
   const router = useRouter();
   const {
     products,
+    categories,
     cart,
     addToCart,
     updateQuantity,
@@ -109,8 +110,11 @@ export default function HomePage() {
         <nav aria-label="Navigation principale" className={`main-nav ${menuOpen ? 'open' : ''}`} id="mainNav">
           <Link className="active" href="/" onClick={() => setMenuOpen(false)}>Accueil</Link>
           <Link href="/boutique" onClick={() => setMenuOpen(false)}>Boutique</Link>
-          <Link href="/boutique?categorie=abayas" onClick={() => setMenuOpen(false)}>Abayas</Link>
-          <Link href="/boutique?categorie=crocs" onClick={() => setMenuOpen(false)}>Crocs</Link>
+          {categories.map(c => (
+            <Link key={c.id} href={`/boutique?categorie=${c.id}`} onClick={() => setMenuOpen(false)}>
+              {c.name}
+            </Link>
+          ))}
           <Link href="/apropos" onClick={() => setMenuOpen(false)}>À propos</Link>
           <Link href="/contact" onClick={() => setMenuOpen(false)}>Contact</Link>
         </nav>

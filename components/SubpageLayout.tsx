@@ -11,7 +11,7 @@ interface SubpageLayoutProps {
 
 export default function SubpageLayout({ children }: SubpageLayoutProps) {
   const pathname = usePathname();
-  const { totalCount, toastMessage } = useCart();
+  const { totalCount, toastMessage, categories } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -38,8 +38,11 @@ export default function SubpageLayout({ children }: SubpageLayoutProps) {
         <nav id="siteNav" className={`nav ${menuOpen ? 'open' : ''}`} aria-label="Menu principal">
           <Link href="/" className={pathname === '/' ? 'current' : ''} onClick={() => setMenuOpen(false)}>Accueil</Link>
           <Link href="/boutique" className={pathname === '/boutique' ? 'current' : ''} onClick={() => setMenuOpen(false)}>Boutique</Link>
-          <Link href="/boutique?categorie=abayas" onClick={() => setMenuOpen(false)}>Abayas</Link>
-          <Link href="/boutique?categorie=crocs" onClick={() => setMenuOpen(false)}>Crocs</Link>
+          {categories.map(c => (
+            <Link key={c.id} href={`/boutique?categorie=${c.id}`} onClick={() => setMenuOpen(false)}>
+              {c.name}
+            </Link>
+          ))}
           <Link href="/apropos" className={pathname === '/apropos' ? 'current' : ''} onClick={() => setMenuOpen(false)}>À propos</Link>
           <Link href="/contact" className={pathname === '/contact' ? 'current' : ''} onClick={() => setMenuOpen(false)}>Contact</Link>
         </nav>

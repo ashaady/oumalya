@@ -1,8 +1,8 @@
 export interface Product {
   id: string;
   name: string;
-  cat: 'crocs' | 'abayas';
-  category: 'crocs' | 'abayas';
+  cat: string;
+  category: string;
   label: string;
   catLabel: string;
   price: number;

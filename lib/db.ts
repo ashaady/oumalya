@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { Product, PRODUCTS as DEFAULT_PRODUCTS } from '@/data/products';
+import { CategoryItem, DEFAULT_CATEGORIES } from '@/data/categories';
 
 const dataDir = path.join(process.cwd(), 'data');
 if (!fs.existsSync(dataDir)) {
@@ -71,7 +72,41 @@ function initDbConnection(): Database.Database {
         created_at TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_products_order ON products(order_num ASC);
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        label TEXT,
+        icon TEXT,
+        image TEXT,
+        default_sizes TEXT,
+        is_default INTEGER DEFAULT 0,
+        order_num INTEGER DEFAULT 0,
+        created_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_categories_order ON categories(order_num ASC);
     `);
+
+    // Seed initial categories if table is empty
+    const catCount = db.prepare('SELECT count(*) as count FROM categories').get() as { count: number } | undefined;
+    if (!catCount || catCount.count === 0) {
+      const insertCat = db.prepare(`
+        INSERT INTO categories (id, name, label, icon, image, default_sizes, is_default, order_num, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      DEFAULT_CATEGORIES.forEach((c, idx) => {
+        insertCat.run(
+          c.id,
+          c.name,
+          c.label || `${c.name.toUpperCase()} · COLLECTION`,
+          c.icon || '✨',
+          c.image || '/images/category-abayas.jpg',
+          JSON.stringify(c.defaultSizes || ['Standard']),
+          c.isDefault ? 1 : 0,
+          idx + 1,
+          new Date().toISOString()
+        );
+      });
+    }
 
     // Seed initial products if table is empty
     const row = db.prepare('SELECT count(*) as count FROM products').get() as { count: number } | undefined;
@@ -197,8 +232,8 @@ export function getProductsFromDb(): Product[] {
       return rows.map(r => ({
         id: r.id,
         name: r.name,
-        cat: r.cat as 'abayas' | 'crocs',
-        category: r.category as 'abayas' | 'crocs',
+        cat: r.cat || r.category || 'abayas',
+        category: r.category || r.cat || 'abayas',
         label: r.label,
         catLabel: r.catLabel,
         price: r.price,
@@ -298,4 +333,60 @@ export function resetProductsInDb(defaults: Product[]): Product[] {
     console.error('Error resetting products in SQLite:', err);
   }
   return defaults;
+}
+
+export function getCategoriesFromDb(): CategoryItem[] {
+  try {
+    const db = getDb();
+    const rows = db.prepare('SELECT * FROM categories ORDER BY order_num ASC, created_at ASC').all() as any[];
+    if (rows && rows.length > 0) {
+      return rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        label: r.label || `${r.name.toUpperCase()} · COLLECTION`,
+        icon: r.icon || '✨',
+        image: r.image || '/images/category-abayas.jpg',
+        defaultSizes: r.default_sizes ? JSON.parse(r.default_sizes) : ['Standard'],
+        isDefault: Boolean(r.is_default)
+      }));
+    }
+  } catch (err) {
+    console.error('Error reading categories from SQLite:', err);
+  }
+  return DEFAULT_CATEGORIES;
+}
+
+export function saveCategoryToDb(cat: CategoryItem): CategoryItem {
+  try {
+    const db = getDb();
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO categories (id, name, label, icon, image, default_sizes, is_default, order_num, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(
+      cat.id,
+      cat.name,
+      cat.label || `${cat.name.toUpperCase()} · COLLECTION`,
+      cat.icon || '✨',
+      cat.image || '/images/category-abayas.jpg',
+      JSON.stringify(cat.defaultSizes || ['Standard']),
+      cat.isDefault ? 1 : 0,
+      10,
+      new Date().toISOString()
+    );
+  } catch (err) {
+    console.error('Error saving category to SQLite:', err);
+  }
+  return cat;
+}
+
+export function deleteCategoryFromDb(id: string): boolean {
+  try {
+    const db = getDb();
+    const stmt = db.prepare('DELETE FROM categories WHERE id = ? AND is_default = 0');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch {
+    return false;
+  }
 }

@@ -78,13 +78,16 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') + '-' + Date.now().toString().slice(-4);
 
+    const cat = body.cat || body.category || 'abayas';
+    const dynamicLabel = cat === 'crocs' ? 'CROCS · COLLECTION' : cat === 'abayas' ? 'ABAYAS · COLLECTION' : `${cat.toUpperCase()} · COLLECTION`;
+
     const newProduct: Product = {
       id,
       name: body.name || 'Nouveau Produit',
-      cat: body.cat || body.category || 'abayas',
-      category: body.cat || body.category || 'abayas',
-      label: body.label || (body.cat === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION'),
-      catLabel: body.catLabel || (body.cat === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION'),
+      cat,
+      category: cat,
+      label: body.label || dynamicLabel,
+      catLabel: body.catLabel || dynamicLabel,
       price: Math.max(0, Number(body.price) || 0) || 15000,
       color: body.color || 'Noir',
       sizes: Array.isArray(body.sizes) && body.sizes.length ? body.sizes : (body.cat === 'crocs' ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL']),
@@ -127,16 +130,17 @@ export async function PUT(req: NextRequest) {
     const index = products.findIndex(p => p.id === body.id);
     const current: Partial<Product> = index !== -1 ? products[index] : {};
 
-    const cat = (body.cat || body.category || current.cat || current.category || 'crocs') as 'abayas' | 'crocs';
+    const cat = body.cat || body.category || current.cat || current.category || 'abayas';
     const isCrocs = cat === 'crocs';
+    const dynamicLabel = isCrocs ? 'CROCS · COLLECTION' : cat === 'abayas' ? 'ABAYAS · COLLECTION' : `${cat.toUpperCase()} · COLLECTION`;
 
     const updatedProduct: Product = {
       id: body.id,
       name: body.name !== undefined ? body.name : (current.name || 'Produit'),
       cat,
       category: cat,
-      label: body.label !== undefined ? body.label : (isCrocs ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION'),
-      catLabel: body.catLabel !== undefined ? body.catLabel : (isCrocs ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION'),
+      label: body.label !== undefined ? body.label : (current.label || dynamicLabel),
+      catLabel: body.catLabel !== undefined ? body.catLabel : (current.catLabel || dynamicLabel),
       price: body.price !== undefined ? Math.max(0, Number(body.price) || 0) : (current.price || 15000),
       color: body.color !== undefined ? body.color : (current.color || 'Noir'),
       sizes: body.sizes !== undefined ? (Array.isArray(body.sizes) ? body.sizes : [body.sizes]) : (current.sizes || (isCrocs ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL'])),

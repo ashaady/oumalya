@@ -11,6 +11,7 @@ function BoutiqueContent() {
   const searchParams = useSearchParams();
   const {
     products,
+    categories,
     cart,
     addToCart,
     updateQuantity,
@@ -36,10 +37,10 @@ function BoutiqueContent() {
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-  // Sync category with URL search param (?categorie=abayas, etc.)
+  // Sync category with URL search param (?categorie=abayas, ?categorie=crocs, etc.)
   useEffect(() => {
     const cat = searchParams.get('categorie');
-    if (cat === 'abayas' || cat === 'crocs') {
+    if (cat) {
       setCategory(cat);
     } else {
       setCategory('all');
@@ -147,22 +148,17 @@ function BoutiqueContent() {
         <nav aria-label="Navigation principale" className={`nav ${menuOpen ? 'open' : ''}`} id="mainNav">
           <Link href="/" onClick={() => setMenuOpen(false)}>Accueil</Link>
           <Link className="active" href="/boutique" onClick={() => setMenuOpen(false)}>Boutique</Link>
-          <button
-            type="button"
-            className={category === 'abayas' ? 'active' : ''}
-            style={{ background: 'none', border: 'none', font: 'inherit', padding: 0, cursor: 'pointer', color: 'inherit' }}
-            onClick={() => { selectCategory('abayas', true); setMenuOpen(false); }}
-          >
-            Abayas
-          </button>
-          <button
-            type="button"
-            className={category === 'crocs' ? 'active' : ''}
-            style={{ background: 'none', border: 'none', font: 'inherit', padding: 0, cursor: 'pointer', color: 'inherit' }}
-            onClick={() => { selectCategory('crocs', true); setMenuOpen(false); }}
-          >
-            Crocs
-          </button>
+          {categories.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              className={category === c.id ? 'active' : ''}
+              style={{ background: 'none', border: 'none', font: 'inherit', padding: 0, cursor: 'pointer', color: 'inherit' }}
+              onClick={() => { selectCategory(c.id, true); setMenuOpen(false); }}
+            >
+              {c.name}
+            </button>
+          ))}
           <Link href="/apropos" onClick={() => setMenuOpen(false)}>À propos</Link>
           <Link href="/contact" onClick={() => setMenuOpen(false)}>Contact</Link>
         </nav>
@@ -230,27 +226,24 @@ function BoutiqueContent() {
                 <h2>À chaque envie, son style</h2>
                 <p>Découvrez nos deux univers.</p>
               </div>
-              <div className="category-cards">
-                <button
-                  aria-pressed={category === 'abayas'}
-                  className={`category-mini ${category === 'abayas' ? 'active' : ''}`}
-                  data-category="abayas"
-                  type="button"
-                  onClick={() => selectCategory('abayas', true)}
-                >
-                  <img alt="Abayas" src="/images/category-abayas.jpg" />
-                  Abayas <small>{products.filter(p => p.category === 'abayas').length.toString().padStart(2, '0')}</small>
-                </button>
-                <button
-                  aria-pressed={category === 'crocs'}
-                  className={`category-mini ${category === 'crocs' ? 'active' : ''}`}
-                  data-category="crocs"
-                  type="button"
-                  onClick={() => selectCategory('crocs', true)}
-                >
-                  <img alt="Crocs" src="/images/category-crocs.jpg" />
-                  Crocs <small>{products.filter(p => p.category === 'crocs').length.toString().padStart(2, '0')}</small>
-                </button>
+              <div className="category-cards" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {categories.map(c => {
+                  const count = products.filter(p => (p.category || p.cat) === c.id).length;
+                  return (
+                    <button
+                      key={c.id}
+                      aria-pressed={category === c.id}
+                      className={`category-mini ${category === c.id ? 'active' : ''}`}
+                      data-category={c.id}
+                      type="button"
+                      onClick={() => selectCategory(c.id, true)}
+                    >
+                      <img alt={c.name} src={c.image || (c.id === 'crocs' ? '/images/category-crocs.jpg' : '/images/category-abayas.jpg')} />
+                      <span>{c.icon ? `${c.icon} ` : ''}{c.name}</span>
+                      <small>{count.toString().padStart(2, '0')}</small>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -300,22 +293,17 @@ function BoutiqueContent() {
                 >
                   Tout voir
                 </button>
-                <button
-                  aria-pressed={category === 'abayas'}
-                  className={`filter-chip ${category === 'abayas' ? 'active' : ''}`}
-                  data-category="abayas"
-                  onClick={() => selectCategory('abayas')}
-                >
-                  Abayas
-                </button>
-                <button
-                  aria-pressed={category === 'crocs'}
-                  className={`filter-chip ${category === 'crocs' ? 'active' : ''}`}
-                  data-category="crocs"
-                  onClick={() => selectCategory('crocs')}
-                >
-                  Crocs
-                </button>
+                {categories.map(c => (
+                  <button
+                    key={c.id}
+                    aria-pressed={category === c.id}
+                    className={`filter-chip ${category === c.id ? 'active' : ''}`}
+                    data-category={c.id}
+                    onClick={() => selectCategory(c.id)}
+                  >
+                    {c.icon ? `${c.icon} ` : ''}{c.name}
+                  </button>
+                ))}
                 <button
                   aria-pressed={category === 'favorites'}
                   className={`filter-chip ${category === 'favorites' ? 'active' : ''}`}

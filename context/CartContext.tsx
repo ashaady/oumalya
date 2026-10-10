@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { Product, PRODUCTS as DEFAULT_PRODUCTS, PRODUCTS_BY_ID as DEFAULT_BY_ID } from '@/data/products';
+import { CategoryItem, DEFAULT_CATEGORIES } from '@/data/categories';
 
 export interface CartEntry {
   p: Product;
@@ -18,6 +19,12 @@ export interface CartContextType {
   updateProduct: (data: Partial<Product> & { id: string }) => Promise<Product | null>;
   deleteProduct: (id: string) => Promise<boolean>;
   resetProducts: () => Promise<void>;
+
+  // Categories
+  categories: CategoryItem[];
+  refreshCategories: () => Promise<void>;
+  addCategory: (data: Partial<CategoryItem>) => Promise<CategoryItem | null>;
+  deleteCategory: (id: string) => Promise<boolean>;
 
   // Cart & Favorites
   cart: Record<string, Record<string, number>>;
@@ -52,9 +59,11 @@ const CartContext = createContext<CartContextType | null>(null);
 const CART_KEY = 'oumalya_cart_v2';
 const FAV_KEY = 'oumalya_fav_v2';
 const PRODUCTS_KEY = 'oumalya_products_v2';
+const CATEGORIES_KEY = 'oumalya_categories_v2';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
+  const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
   const [cart, setCart] = useState<Record<string, Record<string, number>>>({});
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -111,6 +120,121 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
   }, []);
+
+  // Fetch categories from API and sync localStorage
+  const refreshCategories = useCallback(async () => {
+    try {
+      const cached = localStorage.getItem(CATEGORIES_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length) {
+          setCategories(parsed);
+        }
+      }
+    } catch {}
+
+    try {
+      const res = await fetch('/api/categories');
+      if (res.ok) {
+        const apiData: CategoryItem[] = await res.json();
+        if (Array.isArray(apiData) && apiData.length) {
+          setCategories(prev => {
+            const apiIds = new Set(apiData.map(c => c.id));
+            const uniqueLocal = prev.filter(c => !apiIds.has(c.id));
+            const merged = [...apiData, ...uniqueLocal];
+            try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(merged)); } catch {}
+            return merged;
+          });
+        }
+      }
+    } catch {}
+  }, []);
+
+  const addCategory = useCallback(async (data: Partial<CategoryItem>): Promise<CategoryItem | null> => {
+    if (!data.name || !data.name.trim()) {
+      showToast('Le nom de la catégorie est obligatoire');
+      return null;
+    }
+
+    const rawName = data.name.trim();
+    const id = data.id || rawName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    const newCat: CategoryItem = {
+      id,
+      name: rawName,
+      label: data.label || `${rawName.toUpperCase()} · COLLECTION`,
+      icon: data.icon || '✨',
+      image: data.image || '/images/hero-abaya-pink.jpg',
+      defaultSizes: data.defaultSizes || ['Standard'],
+      isDefault: false
+    };
+
+    // Optimistic local update
+    setCategories(prev => {
+      const exists = prev.some(c => c.id === id);
+      const next = exists ? prev.map(c => c.id === id ? newCat : c) : [...prev, newCat];
+      try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCat)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.category) {
+          setCategories(prev => {
+            const next = prev.map(c => c.id === id ? json.category : c);
+            try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(next)); } catch {}
+            return next;
+          });
+          showToast(`Catégorie "${json.category.name}" ajoutée avec succès`);
+          return json.category;
+        }
+      }
+    } catch (e) {
+      console.warn('API category save error:', e);
+    }
+
+    showToast(`Catégorie "${newCat.name}" créée avec succès`);
+    return newCat;
+  }, [showToast]);
+
+  const deleteCategory = useCallback(async (id: string): Promise<boolean> => {
+    if (id === 'abayas' || id === 'crocs') {
+      showToast('Impossible de supprimer les catégories principales');
+      return false;
+    }
+
+    setCategories(prev => {
+      const next = prev.filter(c => c.id !== id);
+      try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    try {
+      const res = await fetch(`/api/categories?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast('Catégorie supprimée');
+        return true;
+      }
+    } catch (e) {
+      console.warn('API category delete error:', e);
+    }
+
+    showToast('Catégorie supprimée');
+    return true;
+  }, [showToast]);
 
   const addProduct = useCallback(async (data: Partial<Product>): Promise<Product | null> => {
     try {
@@ -269,6 +393,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Load from localStorage on client mount
   useEffect(() => {
     refreshProducts();
+    refreshCategories();
 
     try {
       const savedCart = localStorage.getItem(CART_KEY);
@@ -460,6 +585,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updateProduct,
         deleteProduct,
         resetProducts,
+        categories,
+        refreshCategories,
+        addCategory,
+        deleteCategory,
         cart,
         favorites,
         cartEntries,
