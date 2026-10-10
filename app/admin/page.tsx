@@ -87,11 +87,22 @@ export default function AdminPage() {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
   // Product Form Data
-  const [productForm, setProductForm] = useState({
+  const [productForm, setProductForm] = useState<{
+    id: string;
+    name: string;
+    category: 'abayas' | 'crocs';
+    price: number | '';
+    color: string;
+    badge: string;
+    sizesText: string;
+    desc: string;
+    detail: string;
+    img: string;
+  }>({
     id: '',
     name: '',
-    category: 'abayas' as 'abayas' | 'crocs',
-    price: 0,
+    category: 'abayas',
+    price: '',
     color: '',
     badge: 'Nouveauté',
     sizesText: 'S, M, L, XL',
@@ -273,7 +284,7 @@ export default function AdminPage() {
       id: '',
       name: '',
       category: 'abayas',
-      price: 0,
+      price: '',
       color: '',
       badge: 'Nouveauté',
       sizesText: 'S, M, L, XL',
@@ -378,7 +389,13 @@ export default function AdminPage() {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productForm.name.trim()) {
-      showToast('Veuillez renseigner le nom du produit');
+      showToast('Veuillez renseigner le nom du modèle');
+      return;
+    }
+
+    const numericPrice = Number(productForm.price);
+    if (productForm.price === '' || isNaN(numericPrice) || numericPrice <= 0) {
+      showToast('Veuillez renseigner un prix valide (supérieur à 0 F CFA)');
       return;
     }
 
@@ -395,7 +412,7 @@ export default function AdminPage() {
       cat: productForm.category,
       label: productForm.category === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION',
       catLabel: productForm.category === 'crocs' ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION',
-      price: Number(productForm.price) || 0,
+      price: Math.max(0, Math.round(numericPrice)),
       color: productForm.color.trim() || 'Noir',
       badge: productForm.badge,
       badges: productForm.badge,
@@ -1519,11 +1536,32 @@ export default function AdminPage() {
                       <label className="form-label">Prix unitaire (F CFA) *</label>
                       <input
                         type="number"
+                        min="0"
+                        step="500"
                         className="form-input"
+                        placeholder="Ex: 25000"
                         value={productForm.price}
-                        onChange={e => setProductForm({ ...productForm, price: Number(e.target.value) || 0 })}
+                        onKeyDown={e => {
+                          if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') {
+                            e.preventDefault();
+                          }
+                        }}
+                        onChange={e => {
+                          const val = e.target.value.trim();
+                          if (val === '') {
+                            setProductForm(prev => ({ ...prev, price: '' }));
+                            return;
+                          }
+                          const num = Number(val);
+                          if (!isNaN(num) && num >= 0) {
+                            setProductForm(prev => ({ ...prev, price: num }));
+                          }
+                        }}
                         required
                       />
+                      <small style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
+                        Montant en F CFA (valeur positive uniquement)
+                      </small>
                     </div>
 
                     <div className="form-field">
@@ -1836,7 +1874,7 @@ export default function AdminPage() {
                           {productForm.name || 'Nom du produit...'}
                         </div>
                         <div className="phone-price">
-                          {formatPrice(productForm.price || 0)}
+                          {formatPrice(Number(productForm.price) || 0)}
                         </div>
                         <button type="button" className="phone-btn">
                           Commander sur WhatsApp →
