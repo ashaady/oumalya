@@ -84,6 +84,11 @@ function initDbConnection(): Database.Database {
         created_at TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_categories_order ON categories(order_num ASC);
+
+      CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        val TEXT
+      );
     `);
 
     // Seed initial categories if table is empty
@@ -108,35 +113,41 @@ function initDbConnection(): Database.Database {
       });
     }
 
-    // Seed initial products if table is empty
-    const row = db.prepare('SELECT count(*) as count FROM products').get() as { count: number } | undefined;
-    if (!row || row.count === 0) {
-      const insert = db.prepare(`
-        INSERT INTO products (id, name, cat, category, label, catLabel, price, color, sizes, desc, description, detail, badges, badge, img, image, order_num, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      for (const p of DEFAULT_PRODUCTS) {
-        insert.run(
-          p.id,
-          p.name,
-          p.cat || p.category,
-          p.category || p.cat,
-          p.label,
-          p.catLabel,
-          p.price,
-          p.color || 'Noir',
-          JSON.stringify(p.sizes || []),
-          p.desc || '',
-          p.description || '',
-          p.detail || '',
-          p.badges || p.badge || '',
-          p.badge || p.badges || '',
-          p.img || p.image || '',
-          p.image || p.img || '',
-          p.order || 0,
-          new Date().toISOString()
-        );
+    // Seed initial products ONCE if never initialized
+    const metaRow = db.prepare("SELECT val FROM meta WHERE key = 'products_seeded'").get() as { val: string } | undefined;
+    if (!metaRow) {
+      const row = db.prepare('SELECT count(*) as count FROM products').get() as { count: number } | undefined;
+      if (!row || row.count === 0) {
+        const insert = db.prepare(`
+          INSERT INTO products (id, name, cat, category, label, catLabel, price, color, sizes, desc, description, detail, badges, badge, img, image, order_num, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const p of DEFAULT_PRODUCTS) {
+          insert.run(
+            p.id,
+            p.name,
+            p.cat || p.category,
+            p.category || p.cat,
+            p.label,
+            p.catLabel,
+            p.price,
+            p.color || 'Noir',
+            JSON.stringify(p.sizes || []),
+            p.desc || '',
+            p.description || '',
+            p.detail || '',
+            p.badges || p.badge || '',
+            p.badge || p.badges || '',
+            p.img || p.image || '',
+            p.image || p.img || '',
+            p.order || 0,
+            new Date().toISOString()
+          );
+        }
       }
+      try {
+        db.prepare("INSERT OR REPLACE INTO meta (key, val) VALUES ('products_seeded', '1')").run();
+      } catch {}
     }
   } catch {}
 
@@ -224,11 +235,21 @@ export function deleteImageFromDb(id: string): boolean {
   return result.changes > 0;
 }
 
+export function isDbInitialized(): boolean {
+  try {
+    const db = getDb();
+    const meta = db.prepare("SELECT val FROM meta WHERE key = 'products_seeded'").get();
+    return !!meta;
+  } catch {
+    return false;
+  }
+}
+
 export function getProductsFromDb(): Product[] {
   try {
     const db = getDb();
     const rows = db.prepare('SELECT * FROM products ORDER BY order_num ASC, created_at ASC').all() as any[];
-    if (rows && rows.length > 0) {
+    if (rows) {
       return rows.map(r => ({
         id: r.id,
         name: r.name,
@@ -252,7 +273,7 @@ export function getProductsFromDb(): Product[] {
   } catch (err) {
     console.error('Error reading products from SQLite:', err);
   }
-  return DEFAULT_PRODUCTS;
+  return isDbInitialized() ? [] : DEFAULT_PRODUCTS;
 }
 
 export function saveProductToDb(p: Product): Product {

@@ -176,34 +176,6 @@ def list_products(
         )
 
     products = query.order_by(Product.order_num.asc()).all()
-
-    # If DB is empty, initialize with DEFAULT_PRODUCTS
-    if not products:
-        for item in DEFAULT_PRODUCTS:
-            new_p = Product(
-                id=item["id"],
-                name=item["name"],
-                cat=item["cat"],
-                category=item["category"],
-                label=item["label"],
-                catLabel=item["catLabel"],
-                price=item["price"],
-                color=item["color"],
-                sizes=json.dumps(item["sizes"]),
-                desc=item["desc"],
-                description=item["description"],
-                detail=item["detail"],
-                badges=item["badges"],
-                badge=item["badge"],
-                img=item["img"],
-                image=item["image"],
-                order_num=item["order"],
-                created_at=str(time.time())
-            )
-            db.add(new_p)
-        db.commit()
-        products = db.query(Product).order_by(Product.order_num.asc()).all()
-
     return [format_product_dict(p) for p in products]
 
 @router.get("/{id}")
@@ -266,11 +238,10 @@ def create_product(
         created_at=str(time.time())
     )
 
-    db.merge(new_prod)
+    merged_prod = db.merge(new_prod)
     db.commit()
-    db.refresh(new_prod)
 
-    return {"success": True, "product": format_product_dict(new_prod)}
+    return {"success": True, "product": format_product_dict(merged_prod)}
 
 @router.put("/{id}")
 def update_product_by_id(

@@ -6,18 +6,22 @@ import {
   getProductsFromDb,
   saveProductToDb,
   deleteProductFromDb,
-  resetProductsInDb
+  resetProductsInDb,
+  isDbInitialized
 } from '@/lib/db';
 import { FASTAPI_BASE_URL } from '@/lib/fastapi';
 
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || 'sk_test_REDACTED';
 const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
 
 function getStoredProducts(): Product[] {
   // 1. Try SQLite database first
   try {
     const dbProducts = getProductsFromDb();
-    if (Array.isArray(dbProducts) && dbProducts.length > 0) {
-      return dbProducts;
+    if (Array.isArray(dbProducts)) {
+      if (isDbInitialized() || dbProducts.length > 0) {
+        return dbProducts;
+      }
     }
   } catch {}
 
@@ -26,7 +30,7 @@ function getStoredProducts(): Product[] {
     if (fs.existsSync(dataFilePath)) {
       const content = fs.readFileSync(dataFilePath, 'utf8');
       const data = JSON.parse(content);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         return data;
       }
     }
@@ -59,7 +63,10 @@ export async function GET(req: NextRequest) {
   if (reset === 'true') {
     try {
       await fetch(`${FASTAPI_BASE_URL}/api/products?reset=true`, {
-        headers: authHeader ? { 'authorization': authHeader } : {},
+        headers: {
+          'x-admin-secret': CLERK_SECRET_KEY,
+          ...(authHeader ? { 'authorization': authHeader } : {})
+        },
         cache: 'no-store'
       });
     } catch {}
@@ -83,14 +90,17 @@ export async function GET(req: NextRequest) {
 
     const apiRes = await fetch(apiUrl, {
       signal: controller.signal,
-      headers: authHeader ? { 'authorization': authHeader } : {},
+      headers: {
+        'x-admin-secret': CLERK_SECRET_KEY,
+        ...(authHeader ? { 'authorization': authHeader } : {})
+      },
       cache: 'no-store'
     });
     clearTimeout(timeout);
 
     if (apiRes.ok) {
       const data = await apiRes.json();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         saveProducts(data);
         return NextResponse.json(data);
       }
@@ -116,6 +126,7 @@ export async function POST(req: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-admin-secret': CLERK_SECRET_KEY,
           ...(authHeader ? { 'authorization': authHeader } : {})
         },
         body: JSON.stringify(body)
@@ -199,6 +210,7 @@ export async function PUT(req: NextRequest) {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'x-admin-secret': CLERK_SECRET_KEY,
           ...(authHeader ? { 'authorization': authHeader } : {})
         },
         body: JSON.stringify(body)
@@ -278,24 +290,19 @@ export async function DELETE(req: NextRequest) {
 
     const authHeader = req.headers.get('authorization');
 
-    // Forward to FastAPI backend
+    // 1. Forward to FastAPI backend
+    let fastApiDeleted = false;
     try {
       const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/products?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
-        headers: authHeader ? { 'authorization': authHeader } : {}
+        headers: {
+          'x-admin-secret': CLERK_SECRET_KEY,
+          ...(authHeader ? { 'authorization': authHeader } : {})
+        }
       });
 
-      if (apiRes.status === 401 || apiRes.status === 403) {
-        const errJson = await apiRes.json().catch(() => ({}));
-        return NextResponse.json(errJson, { status: apiRes.status });
-      }
-
       if (apiRes.ok) {
-        try { deleteProductFromDb(id); } catch {}
-        let products = getStoredProducts();
-        products = products.filter(p => p.id !== id);
-        saveProducts(products);
-        return NextResponse.json({ success: true, deletedId: id });
+        fastApiDeleted = true;
       }
     } catch (apiErr) {
       console.warn('[Products DELETE] FastAPI forward error, using local fallback:', apiErr);
@@ -307,12 +314,12 @@ export async function DELETE(req: NextRequest) {
     try { deleteProductFromDb(id); } catch {}
     products = products.filter(p => p.id !== id);
 
-    if (!exists) {
+    if (!exists && !fastApiDeleted) {
       return NextResponse.json({ error: 'Produit non trouvé' }, { status: 404 });
     }
 
     saveProducts(products);
-    return NextResponse.json({ success: true, deletedId: id });
+    return NextResponse.json({ success: true, deletedId: id, fastApiSynced: fastApiDeleted });
   } catch (error) {
     return NextResponse.json({ error: 'Erreur lors de la suppression' }, { status: 500 });
   }

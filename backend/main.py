@@ -31,31 +31,34 @@ async def lifespan(app: FastAPI):
     # Seed data if empty
     db = SessionLocal()
     try:
-        # Check products
-        prod_count = db.query(Product).count()
-        if prod_count == 0:
-            for item in products.DEFAULT_PRODUCTS:
-                new_p = Product(
-                    id=item["id"],
-                    name=item["name"],
-                    cat=item["cat"],
-                    category=item["category"],
-                    label=item["label"],
-                    catLabel=item["catLabel"],
-                    price=item["price"],
-                    color=item["color"],
-                    sizes=json.dumps(item["sizes"]),
-                    desc=item["desc"],
-                    description=item["description"],
-                    detail=item["detail"],
-                    badges=item["badges"],
-                    badge=item["badge"],
-                    img=item["img"],
-                    image=item["image"],
-                    order_num=item["order"],
-                    created_at="1728000000"
-                )
-                db.add(new_p)
+        # Check products - only seed once on very first launch
+        seeded_flag = db.query(Setting).filter(Setting.key == "catalog_seeded").first()
+        if not seeded_flag:
+            prod_count = db.query(Product).count()
+            if prod_count == 0:
+                for item in products.DEFAULT_PRODUCTS:
+                    new_p = Product(
+                        id=item["id"],
+                        name=item["name"],
+                        cat=item["cat"],
+                        category=item["category"],
+                        label=item["label"],
+                        catLabel=item["catLabel"],
+                        price=item["price"],
+                        color=item["color"],
+                        sizes=json.dumps(item["sizes"]),
+                        desc=item["desc"],
+                        description=item["description"],
+                        detail=item["detail"],
+                        badges=item["badges"],
+                        badge=item["badge"],
+                        img=item["img"],
+                        image=item["image"],
+                        order_num=item["order"],
+                        created_at="1728000000"
+                    )
+                    db.add(new_p)
+            db.merge(Setting(key="catalog_seeded", value="true"))
             db.commit()
 
         # Check categories

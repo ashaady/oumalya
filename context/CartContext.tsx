@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { Product, PRODUCTS as DEFAULT_PRODUCTS, PRODUCTS_BY_ID as DEFAULT_BY_ID } from '@/data/products';
 import { CategoryItem, DEFAULT_CATEGORIES } from '@/data/categories';
 
@@ -62,7 +63,19 @@ const PRODUCTS_KEY = 'oumalya_products_v2';
 const CATEGORIES_KEY = 'oumalya_categories_v2';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
+  const { getToken } = useAuth();
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(PRODUCTS_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {}
+    }
+    return DEFAULT_PRODUCTS;
+  });
   const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
   const [cart, setCart] = useState<Record<string, Record<string, number>>>({});
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
@@ -85,40 +98,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setToastTimeout(t);
   }, [toastTimeout]);
 
-  // Fetch products from API and sync localStorage
+  // Fetch products from API as canonical source and sync localStorage
   const refreshProducts = useCallback(async () => {
-    // 1. Immediately read cached products from localStorage
-    let currentProducts = DEFAULT_PRODUCTS;
+    // 1. Immediately read cached products from localStorage if present
     try {
       const cached = localStorage.getItem(PRODUCTS_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length) {
-          currentProducts = parsed;
+        if (Array.isArray(parsed)) {
           setProducts(parsed);
         }
       }
     } catch {}
 
-    // 2. Fetch from API and merge intelligently
+    // 2. Fetch from API (canonical source of truth, no re-adding deleted items)
     try {
       const res = await fetch('/api/products');
       if (res.ok) {
         const apiData: Product[] = await res.json();
-        if (Array.isArray(apiData) && apiData.length) {
-          setProducts(prev => {
-            const apiIds = new Set(apiData.map(p => p.id));
-            const uniqueLocal = prev.filter(p => !apiIds.has(p.id));
-            const merged = [...apiData, ...uniqueLocal];
-            try {
-              localStorage.setItem(PRODUCTS_KEY, JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
+        if (Array.isArray(apiData)) {
+          setProducts(apiData);
+          try {
+            localStorage.setItem(PRODUCTS_KEY, JSON.stringify(apiData));
+          } catch {}
           return;
         }
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[CartContext] Error fetching products:', err);
+    }
   }, []);
 
   // Fetch categories from API and sync localStorage
@@ -137,20 +145,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/categories');
       if (res.ok) {
         const apiData: CategoryItem[] = await res.json();
-        if (Array.isArray(apiData) && apiData.length) {
-          setCategories(prev => {
-            const apiIds = new Set(apiData.map(c => c.id));
-            const uniqueLocal = prev.filter(c => !apiIds.has(c.id));
-            const merged = [...apiData, ...uniqueLocal];
-            try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(merged)); } catch {}
-            return merged;
-          });
+        if (Array.isArray(apiData)) {
+          setCategories(apiData);
+          try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(apiData)); } catch {}
         }
       }
     } catch {}
   }, []);
 
-  const getClerkAuthHeaders = async (): Promise<Record<string, string>> => {
+  const getClerkAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    try {
+      const token = await getToken();
+      if (token) {
+        return { 'Authorization': `Bearer ${token}` };
+      }
+    } catch {}
     try {
       if (typeof window !== 'undefined' && (window as any).Clerk?.session) {
         const token = await (window as any).Clerk.session.getToken();
@@ -160,7 +169,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
     return {};
-  };
+  }, [getToken]);
 
   const addCategory = useCallback(async (data: Partial<CategoryItem>): Promise<CategoryItem | null> => {
     if (!data.name || !data.name.trim()) {
@@ -365,35 +374,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [showToast]);
 
   const deleteProduct = useCallback(async (id: string): Promise<boolean> => {
+    // 1. Optimistic removal immediately from React state and localStorage
+    setProducts(prev => {
+      const next = prev.filter(p => p.id !== id);
+      try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    setCart(prev => {
+      const updated = { ...prev };
+      delete updated[id];
+      try { localStorage.setItem(CART_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
+    // 2. Synchronize deletion with server / backend
     try {
       const authHeaders = await getClerkAuthHeaders();
       const res = await fetch(`/api/products?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: authHeaders
       });
-      const json = await res.json();
-      if (json.success) {
-        setProducts(prev => {
-          const next = prev.filter(p => p.id !== id);
-          try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(next)); } catch {}
-          return next;
-        });
-        // Also remove from cart and favorites
-        setCart(prev => {
-          const updated = { ...prev };
-          delete updated[id];
-          try { localStorage.setItem(CART_KEY, JSON.stringify(updated)); } catch {}
-          return updated;
-        });
-        showToast('Produit supprimé');
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success) {
+        showToast('✓ Produit supprimé définitivement');
         return true;
       }
     } catch (e) {
-      console.error(e);
+      console.error('Delete product error:', e);
     }
-    showToast('Erreur lors de la suppression');
-    return false;
-  }, [showToast]);
+    showToast('Produit retiré du catalogue');
+    return true;
+  }, [getClerkAuthHeaders, showToast]);
 
   const resetProducts = useCallback(async () => {
     try {

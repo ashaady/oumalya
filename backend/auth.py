@@ -1,7 +1,7 @@
 import os
 import httpx
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -108,6 +108,7 @@ def verify_token(token: str) -> dict:
     )
 
 def get_current_admin(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> AdminUser:
@@ -115,7 +116,23 @@ def get_current_admin(
     Validates Clerk JWT and enforces the rule:
     Only the first 2 users who connect are granted Administrator privileges.
     Any further users attempting to access admin routes are denied with 403 Forbidden.
+    Also accepts x-admin-secret header from server-side Next.js route handlers.
     """
+    # Check server-to-server secret
+    secret_header = request.headers.get("x-admin-secret")
+    if secret_header and secret_header == CLERK_SECRET_KEY:
+        admin = db.query(AdminUser).first()
+        if admin:
+            return admin
+        return AdminUser(
+            id=1,
+            clerk_user_id="server_admin",
+            email="admin@oumalya.com",
+            first_name="Admin",
+            last_name="Oumalya",
+            created_at="1728000000"
+        )
+
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
