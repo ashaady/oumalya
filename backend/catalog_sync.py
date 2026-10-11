@@ -11,6 +11,64 @@ SUPABASE_KEY = _env_key if _env_key.startswith("ey") else DEFAULT_SERVICE_KEY
 BUCKET = "oumalya-images"
 FILE_NAME = "oumalya_catalog.json"
 
+DEFAULT_HOMEPAGE = {
+    "slides": [
+        {
+            "id": "slide-1",
+            "eyebrow": "NOUVELLE COLLECTION",
+            "top": "Élégance",
+            "accent": "au quotidien",
+            "desc": "Des abayas modernes et des Crocs tendance pour un style qui vous ressemble.",
+            "image": "/images/hero-abaya-pink.jpg",
+            "buttonText": "Découvrir la collection",
+            "buttonLink": "/boutique"
+        },
+        {
+            "id": "slide-2",
+            "eyebrow": "LA COLLECTION ABAYAS",
+            "top": "La beauté",
+            "accent": "en toute simplicité",
+            "desc": "Découvrez des pièces élégantes et confortables à porter chaque jour.",
+            "image": "/images/hero-abaya-pink.jpg",
+            "buttonText": "Voir les abayas",
+            "buttonLink": "/boutique?categorie=abayas"
+        },
+        {
+            "id": "slide-3",
+            "eyebrow": "NOTRE UNIVERS",
+            "top": "Style &",
+            "accent": "douceur",
+            "desc": "Des essentiels féminins sélectionnés avec soin pour vous.",
+            "image": "/images/hero-abaya-pink.jpg",
+            "buttonText": "Nos créations",
+            "buttonLink": "/boutique"
+        }
+    ],
+    "categoryCards": [
+        {
+            "id": "abayas",
+            "title": "Abayas",
+            "subtitle": "Élégance, confort et modernité",
+            "image": "/images/category-abayas.jpg",
+            "link": "/boutique?categorie=abayas"
+        },
+        {
+            "id": "crocs",
+            "title": "Crocs",
+            "subtitle": "Confort et style au quotidien",
+            "image": "/images/category-crocs.jpg",
+            "link": "/boutique?categorie=crocs"
+        }
+    ],
+    "promoBanner": {
+        "title": "Confort & Élégance",
+        "desc": "Découvrez notre sélection de Crocs tendance pour toutes les occasions.",
+        "image": "/images/promo-crocs.jpg",
+        "buttonText": "Découvrir les Crocs",
+        "buttonLink": "/boutique?categorie=crocs"
+    }
+}
+
 def get_catalog_from_supabase() -> Optional[dict]:
     """Reads persistent catalog from Supabase CDN (persistent across container redeployments)"""
     url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{FILE_NAME}?t={int(time.time() * 1000)}"
@@ -25,20 +83,26 @@ def get_catalog_from_supabase() -> Optional[dict]:
         print(f"[Supabase Sync] Read error: {e}")
     return None
 
-def save_catalog_to_supabase(products: Optional[List[dict]] = None, categories: Optional[List[dict]] = None) -> bool:
+def save_catalog_to_supabase(
+    products: Optional[List[dict]] = None,
+    categories: Optional[List[dict]] = None,
+    homepage: Optional[dict] = None
+) -> bool:
     """Upserts persistent catalog to Supabase Cloud Storage"""
     upload_url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{FILE_NAME}"
     try:
         existing = get_catalog_from_supabase() or {}
         final_products = products if products is not None else existing.get("products", [])
         final_categories = categories if categories is not None else existing.get("categories", [])
+        final_homepage = homepage if homepage is not None else existing.get("homepage", DEFAULT_HOMEPAGE)
 
         payload = {
             "initialized": True,
             "version": existing.get("version", 0) + 1,
             "last_updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "products": final_products,
-            "categories": final_categories
+            "categories": final_categories,
+            "homepage": final_homepage
         }
 
         headers = {
@@ -55,12 +119,12 @@ def save_catalog_to_supabase(products: Optional[List[dict]] = None, categories: 
         return False
 
 def sync_db_to_supabase(db) -> bool:
-    """Serializes all products and categories from current DB session and uploads to Supabase Storage"""
+    """Serializes all products, categories and homepage from current DB session and uploads to Supabase Storage"""
     try:
         try:
-            from models import Product, Category
+            from models import Product, Category, Setting
         except ImportError:
-            from backend.models import Product, Category
+            from backend.models import Product, Category, Setting
 
         # 1. Format all products
         db_products = db.query(Product).order_by(Product.order_num.asc()).all()
@@ -114,13 +178,22 @@ def sync_db_to_supabase(db) -> bool:
                 "isDefault": bool(c.is_default)
             })
 
-        return save_catalog_to_supabase(products=formatted_prods, categories=formatted_cats)
+        # 3. Retrieve homepage settings
+        home_row = db.query(Setting).filter(Setting.key == "homepage_settings").first()
+        home_data = DEFAULT_HOMEPAGE
+        if home_row:
+            try:
+                home_data = json.loads(home_row.value)
+            except Exception:
+                pass
+
+        return save_catalog_to_supabase(products=formatted_prods, categories=formatted_cats, homepage=home_data)
     except Exception as e:
         print(f"[Supabase Sync] sync_db_to_supabase error: {e}")
         return False
 
 def restore_supabase_to_db(db) -> bool:
-    """Restores catalog from Supabase Storage into local SQLite session on container startup"""
+    """Restores catalog and homepage from Supabase Storage into local SQLite session on container startup"""
     try:
         try:
             from models import Product, Category, Setting
@@ -133,6 +206,7 @@ def restore_supabase_to_db(db) -> bool:
 
         cloud_categories = catalog.get("categories")
         cloud_products = catalog.get("products")
+        cloud_homepage = catalog.get("homepage")
 
         # Restore categories
         if isinstance(cloud_categories, list) and len(cloud_categories) > 0:
@@ -179,6 +253,11 @@ def restore_supabase_to_db(db) -> bool:
                     created_at=str(time.time())
                 )
                 db.add(new_p)
+            db.commit()
+
+        # Restore homepage settings
+        if isinstance(cloud_homepage, dict):
+            db.merge(Setting(key="homepage_settings", value=json.dumps(cloud_homepage)))
             db.commit()
 
         db.merge(Setting(key="catalog_seeded", value="true"))

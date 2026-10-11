@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { useAuth } from '@clerk/nextjs';
 import { Product, PRODUCTS as DEFAULT_PRODUCTS, PRODUCTS_BY_ID as DEFAULT_BY_ID } from '@/data/products';
 import { CategoryItem, DEFAULT_CATEGORIES } from '@/data/categories';
+import { HomePageSettings, DEFAULT_HOMEPAGE_SETTINGS } from '@/data/homepage';
 
 export interface CartEntry {
   p: Product;
@@ -26,6 +27,11 @@ export interface CartContextType {
   refreshCategories: () => Promise<void>;
   addCategory: (data: Partial<CategoryItem>) => Promise<CategoryItem | null>;
   deleteCategory: (id: string) => Promise<boolean>;
+
+  // Homepage Visuals & Content
+  homeSettings: HomePageSettings;
+  refreshHomeSettings: () => Promise<void>;
+  updateHomeSettings: (data: HomePageSettings) => Promise<boolean>;
 
   // Cart & Favorites
   cart: Record<string, Record<string, number>>;
@@ -61,6 +67,7 @@ const CART_KEY = 'oumalya_cart_v2';
 const FAV_KEY = 'oumalya_fav_v2';
 const PRODUCTS_KEY = 'oumalya_products_v2';
 const CATEGORIES_KEY = 'oumalya_categories_v2';
+const HOMEPAGE_KEY = 'oumalya_homepage_v2';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { getToken } = useAuth();
@@ -77,6 +84,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return DEFAULT_PRODUCTS;
   });
   const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
+  const [homeSettings, setHomeSettings] = useState<HomePageSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(HOMEPAGE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && Array.isArray(parsed.slides)) return parsed;
+        }
+      } catch {}
+    }
+    return DEFAULT_HOMEPAGE_SETTINGS;
+  });
   const [cart, setCart] = useState<Record<string, Record<string, number>>>({});
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -151,6 +170,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch {}
+  }, []);
+
+  // Fetch homepage settings from API and sync localStorage
+  const refreshHomeSettings = useCallback(async () => {
+    try {
+      const cached = localStorage.getItem(HOMEPAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.slides)) {
+          setHomeSettings(parsed);
+        }
+      }
+    } catch {}
+
+    try {
+      const res = await fetch('/api/homepage');
+      if (res.ok) {
+        const data: HomePageSettings = await res.json();
+        if (data && Array.isArray(data.slides)) {
+          setHomeSettings(data);
+          try { localStorage.setItem(HOMEPAGE_KEY, JSON.stringify(data)); } catch {}
+        }
+      }
+    } catch (err) {
+      console.warn('[CartContext] Error fetching homepage settings:', err);
+    }
   }, []);
 
   const getClerkAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
@@ -259,6 +304,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     showToast('Catégorie supprimée');
     return true;
   }, [showToast]);
+
+  const updateHomeSettings = useCallback(async (data: HomePageSettings): Promise<boolean> => {
+    setHomeSettings(data);
+    try {
+      localStorage.setItem(HOMEPAGE_KEY, JSON.stringify(data));
+    } catch {}
+
+    try {
+      const authHeaders = await getClerkAuthHeaders();
+      const res = await fetch('/api/homepage', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        showToast('Visuels de la page d\'accueil enregistrés avec succès');
+        return true;
+      }
+    } catch (e) {
+      console.warn('API homepage save error:', e);
+    }
+
+    showToast('Visuels appliqués localement');
+    return true;
+  }, [getClerkAuthHeaders, showToast]);
 
   const addProduct = useCallback(async (data: Partial<Product>): Promise<Product | null> => {
     try {
@@ -427,6 +497,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refreshProducts();
     refreshCategories();
+    refreshHomeSettings();
 
     try {
       const savedCart = localStorage.getItem(CART_KEY);
@@ -622,6 +693,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         refreshCategories,
         addCategory,
         deleteCategory,
+        homeSettings,
+        refreshHomeSettings,
+        updateHomeSettings,
         cart,
         favorites,
         cartEntries,

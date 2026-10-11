@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { PRODUCTS, PRODUCTS_BY_ID, formatPrice } from '@/data/products';
+import { DEFAULT_HOMEPAGE_SETTINGS } from '@/data/homepage';
 
 export default function HomePage() {
   const router = useRouter();
   const {
     products,
     categories,
+    homeSettings,
     cart,
     addToCart,
     updateQuantity,
@@ -33,29 +35,9 @@ export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const slides = [
-    {
-      eyebrow: 'NOUVELLE COLLECTION',
-      top: 'Élégance',
-      accent: 'au quotidien',
-      desc: 'Des abayas modernes et des Crocs tendance pour un style qui vous ressemble.',
-      image: '/images/hero-abaya-pink.jpg'
-    },
-    {
-      eyebrow: 'LA COLLECTION ABAYAS',
-      top: 'La beauté',
-      accent: 'en toute simplicité',
-      desc: 'Découvrez des pièces élégantes et confortables à porter chaque jour.',
-      image: '/images/hero-abaya-pink.jpg'
-    },
-    {
-      eyebrow: 'NOTRE UNIVERS',
-      top: 'Style &',
-      accent: 'douceur',
-      desc: 'Des essentiels féminins sélectionnés avec soin pour vous.',
-      image: '/images/hero-abaya-pink.jpg'
-    }
-  ];
+  const slides = (homeSettings?.slides && homeSettings.slides.length > 0)
+    ? homeSettings.slides
+    : DEFAULT_HOMEPAGE_SETTINGS.slides;
 
   // Close modals on Escape
   useEffect(() => {
@@ -148,8 +130,8 @@ export default function HomePage() {
               {slides[currentSlide].top} <span>{slides[currentSlide].accent}</span>
             </h1>
             <p className="hero-description">{slides[currentSlide].desc}</p>
-            <Link className="pill-button" href="/boutique">
-              Découvrir la collection <svg><use href="#i-arrow"></use></svg>
+            <Link className="pill-button" href={slides[currentSlide].buttonLink || '/boutique'}>
+              {slides[currentSlide].buttonText || 'Découvrir la collection'} <svg><use href="#i-arrow"></use></svg>
             </Link>
           </div>
           <button
@@ -185,26 +167,43 @@ export default function HomePage() {
         <div className="container">
           {/* Categories Section */}
           <section aria-label="Nos catégories" className="categories">
-            <article className="category abaya" id="abayas">
-              <img alt="Abaya noire fluide" className="category-photo" loading="lazy" src="/images/category-abayas.jpg" />
-              <div className="category-copy">
-                <h2>Abayas</h2>
-                <p>Élégance, confort et modernité</p>
-                <Link className="pill-button" href="/boutique?categorie=abayas">
-                  Voir la collection <svg><use href="#i-arrow"></use></svg>
-                </Link>
-              </div>
-            </article>
-            <article className="category crocs" id="crocs">
-              <img alt="Crocs roses décorées" className="category-photo" loading="lazy" src="/images/category-crocs.jpg" />
-              <div className="category-copy">
-                <h2>Crocs</h2>
-                <p>Confort et style au quotidien</p>
-                <Link className="pill-button" href="/boutique?categorie=crocs">
-                  Voir la collection <svg><use href="#i-arrow"></use></svg>
-                </Link>
-              </div>
-            </article>
+            {homeSettings?.categoryCards && homeSettings.categoryCards.length > 0 ? (
+              homeSettings.categoryCards.map((card) => (
+                <article key={card.id} className={`category ${card.id}`} id={card.id}>
+                  <img alt={card.title} className="category-photo" loading="lazy" src={card.image} />
+                  <div className="category-copy">
+                    <h2>{card.title}</h2>
+                    <p>{card.subtitle}</p>
+                    <Link className="pill-button" href={card.link}>
+                      Voir la collection <svg><use href="#i-arrow"></use></svg>
+                    </Link>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <>
+                <article className="category abaya" id="abayas">
+                  <img alt="Abaya noire fluide" className="category-photo" loading="lazy" src="/images/category-abayas.jpg" />
+                  <div className="category-copy">
+                    <h2>Abayas</h2>
+                    <p>Élégance, confort et modernité</p>
+                    <Link className="pill-button" href="/boutique?categorie=abayas">
+                      Voir la collection <svg><use href="#i-arrow"></use></svg>
+                    </Link>
+                  </div>
+                </article>
+                <article className="category crocs" id="crocs">
+                  <img alt="Crocs roses décorées" className="category-photo" loading="lazy" src="/images/category-crocs.jpg" />
+                  <div className="category-copy">
+                    <h2>Crocs</h2>
+                    <p>Confort et style au quotidien</p>
+                    <Link className="pill-button" href="/boutique?categorie=crocs">
+                      Voir la collection <svg><use href="#i-arrow"></use></svg>
+                    </Link>
+                  </div>
+                </article>
+              </>
+            )}
           </section>
 
           {/* Benefits Section */}
@@ -273,12 +272,17 @@ export default function HomePage() {
 
           {/* Promo Section */}
           <section aria-label="Notre collection Crocs" className="promo">
-            <img alt="Crocs roses Hello Kitty en gros plan" className="promo-photo" loading="lazy" src="/images/promo-crocs.jpg" />
+            <img
+              alt={homeSettings?.promoBanner?.title || 'Promotion'}
+              className="promo-photo"
+              loading="lazy"
+              src={homeSettings?.promoBanner?.image || '/images/promo-crocs.jpg'}
+            />
             <div className="promo-copy">
-              <h2>Confort &amp; Élégance</h2>
-              <p>Découvrez notre sélection de Crocs tendance pour toutes les occasions.</p>
-              <Link className="pill-button" href="/boutique?categorie=crocs">
-                Découvrir les Crocs <svg><use href="#i-arrow"></use></svg>
+              <h2>{homeSettings?.promoBanner?.title || 'Confort & Élégance'}</h2>
+              <p>{homeSettings?.promoBanner?.desc || 'Découvrez notre sélection de Crocs tendance pour toutes les occasions.'}</p>
+              <Link className="pill-button" href={homeSettings?.promoBanner?.buttonLink || '/boutique?categorie=crocs'}>
+                {homeSettings?.promoBanner?.buttonText || 'Découvrir les Crocs'} <svg><use href="#i-arrow"></use></svg>
               </Link>
             </div>
           </section>

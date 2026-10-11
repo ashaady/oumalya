@@ -16,12 +16,12 @@ if PARENT_DIR not in sys.path:
 try:
     from database import Base, engine, SessionLocal
     from models import Product, Category, Order, Setting, AdminUser
-    from routers import products, categories, orders, upload, settings, admin
+    from routers import products, categories, orders, upload, settings, admin, homepage
     import catalog_sync
 except ImportError:
     from backend.database import Base, engine, SessionLocal
     from backend.models import Product, Category, Order, Setting, AdminUser
-    from backend.routers import products, categories, orders, upload, settings, admin
+    from backend.routers import products, categories, orders, upload, settings, admin, homepage
     from backend import catalog_sync
 
 # Initialize DB tables on startup
@@ -156,6 +156,7 @@ app.include_router(orders.router)
 app.include_router(upload.router)
 app.include_router(settings.router)
 app.include_router(admin.router)
+app.include_router(homepage.router)
 
 @app.get("/", tags=["Health"])
 def root():

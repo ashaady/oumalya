@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth, useUser, SignIn, SignOutButton, UserButton } from '@clerk/nextjs';
 import { useCart } from '@/context/CartContext';
 import { Product, formatPrice } from '@/data/products';
+import { HomePageSettings, DEFAULT_HOMEPAGE_SETTINGS } from '@/data/homepage';
 
 const PRESET_IMAGES = [
   { label: 'Abaya Soie Rose (Hero)', url: '/images/hero-abaya-pink.jpg' },
@@ -14,7 +15,9 @@ const PRESET_IMAGES = [
   { label: 'Crocs Hello Kitty Rose', url: '/images/product-crocs-rose.jpg' },
   { label: 'Abaya Collection Index', url: '/images/index-abaya-noire.jpg' },
   { label: 'Abaya Taupe Index', url: '/images/index-abaya-taupe.jpg' },
-  { label: 'Crocs Charms Promo', url: '/images/promo-crocs.jpg' }
+  { label: 'Crocs Charms Promo', url: '/images/promo-crocs.jpg' },
+  { label: 'Abayas Catégorie (Accueil)', url: '/images/category-abayas.jpg' },
+  { label: 'Crocs Catégorie (Accueil)', url: '/images/category-crocs.jpg' }
 ];
 
 export interface OrderItem {
@@ -45,7 +48,7 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
 }
 
-type TabKey = 'dashboard' | 'products' | 'orders' | 'settings';
+type TabKey = 'dashboard' | 'products' | 'orders' | 'homepage' | 'settings';
 
 const clerkOumalyaAppearance = {
   variables: {
@@ -158,6 +161,8 @@ export default function AdminPage() {
     categories,
     addCategory,
     deleteCategory,
+    homeSettings,
+    updateHomeSettings,
     showToast
   } = useCart();
 
@@ -311,6 +316,77 @@ export default function AdminPage() {
     regionFee: 5000,
     announcement: 'Livraison express à Dakar en 24h & expédition sécurisée dans toutes les régions du Sénégal'
   });
+
+  // Homepage Visuals Form State
+  const [homeForm, setHomeForm] = useState<HomePageSettings>(DEFAULT_HOMEPAGE_SETTINGS);
+  const [isSavingHome, setIsSavingHome] = useState(false);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+
+  useEffect(() => {
+    if (homeSettings && Array.isArray(homeSettings.slides)) {
+      setHomeForm(homeSettings);
+    }
+  }, [homeSettings]);
+
+  const uploadVisualImage = async (file: File, onSuccess: (url: string) => void) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Veuillez sélectionner un fichier image valide (JPG, PNG, WEBP...)');
+      return;
+    }
+
+    try {
+      const previewUrl = URL.createObjectURL(file);
+      onSuccess(previewUrl);
+    } catch {}
+
+    try {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: authHeaders,
+        body: uploadData
+      });
+      const json = await res.json();
+      if (json.success && json.url) {
+        onSuccess(json.url);
+        showToast('Image téléversée avec succès');
+        return;
+      }
+    } catch (e) {
+      console.warn('Upload error:', e);
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      onSuccess(reader.result as string);
+      showToast('Photo appliquée localement');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveHomeVisuals = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSavingHome(true);
+    try {
+      const ok = await updateHomeSettings(homeForm);
+      if (ok) {
+        showToast('✓ Visuels d\'accueil enregistrés et synchronisés sur le Cloud');
+      }
+    } finally {
+      setIsSavingHome(false);
+    }
+  };
+
+  const handleResetHomeVisuals = async () => {
+    if (confirm('Voulez-vous rétablir les images et bannières d\'accueil par défaut ?')) {
+      setHomeForm(DEFAULT_HOMEPAGE_SETTINGS);
+      await updateHomeSettings(DEFAULT_HOMEPAGE_SETTINGS);
+      showToast('Images d\'origine rétablies');
+    }
+  };
 
   // Sound chime for new incoming orders
   const playChime = () => {
@@ -1263,6 +1339,16 @@ export default function AdminPage() {
           </button>
 
           <button
+            className={`nav-item ${activeTab === 'homepage' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('homepage'); setSidebarOpen(false); }}
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Visuels Accueil
+          </button>
+
+          <button
             className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}
           >
@@ -1344,6 +1430,7 @@ export default function AdminPage() {
               {activeTab === 'dashboard' && 'Tableau de bord exécutif'}
               {activeTab === 'products' && 'Gestion du catalogue produits'}
               {activeTab === 'orders' && 'Commandes & Suivi livraisons'}
+              {activeTab === 'homepage' && 'Personnalisation des visuels de l\'accueil'}
               {activeTab === 'settings' && 'Configuration de la boutique'}
             </h1>
           </div>
@@ -1466,6 +1553,17 @@ export default function AdminPage() {
             {activeTab === 'orders' && (
               <button onClick={fetchOrders} className="btn btn-outline" disabled={isLoadingOrders}>
                 {isLoadingOrders ? 'Actualisation...' : '↻ Rafraîchir'}
+              </button>
+            )}
+
+            {activeTab === 'homepage' && (
+              <button
+                type="button"
+                onClick={() => handleSaveHomeVisuals()}
+                className="btn btn-primary"
+                disabled={isSavingHome}
+              >
+                {isSavingHome ? 'Enregistrement...' : '💾 Enregistrer les visuels'}
               </button>
             )}
 
@@ -2117,7 +2215,594 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 4: SETTINGS */}
+          {/* TAB 4: HOMEPAGE VISUALS */}
+          {activeTab === 'homepage' && (
+            <div style={{ maxWidth: '1000px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
+              {/* Header card / Intro */}
+              <div className="panel-card" style={{ background: 'linear-gradient(135deg, #fef1f5 0%, #ffffff 100%)', border: '1px solid rgba(235, 92, 142, 0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontFamily: "'Playfair Display', Georgia, serif", fontSize: '20px', color: 'var(--ink)' }}>
+                      Personnalisation des Images de la Page d&apos;Accueil
+                    </h3>
+                    <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--muted)' }}>
+                      Changez en direct les visuels du grand carrousel (Hero), des cartes de collections (Abayas & Crocs) et de la bannière du bas.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={handleResetHomeVisuals}
+                      className="btn btn-outline btn-sm"
+                      title="Rétablir les visuels par défaut"
+                    >
+                      ↺ Rétablir défaut
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveHomeVisuals}
+                      className="btn btn-primary"
+                      disabled={isSavingHome}
+                    >
+                      {isSavingHome ? 'Enregistrement...' : '💾 Enregistrer les visuels'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ================= SECTION 1: CARROUSEL PRINCIPAL (HERO) ================= */}
+              <div className="panel-card">
+                <div className="panel-header" style={{ borderBottom: '1px solid var(--stroke-light)', paddingBottom: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>🎠</span> 1. Carrousel Principal (Bannières Hero en haut)
+                    </h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--muted)' }}>
+                      Sélectionnez la diapositive à modifier (Diapo 1, 2 ou 3) et remplacez son image ou ses textes.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {homeForm.slides.map((s, idx) => (
+                      <button
+                        key={s.id || idx}
+                        type="button"
+                        onClick={() => setActiveSlideIndex(idx)}
+                        className={`btn btn-sm ${activeSlideIndex === idx ? 'btn-primary' : 'btn-outline'}`}
+                        style={{ fontSize: '12px', padding: '6px 14px' }}
+                      >
+                        Diapositive {idx + 1}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {homeForm.slides[activeSlideIndex] && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                    {/* Live Preview of Current Slide */}
+                    <div style={{
+                      position: 'relative',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      minHeight: '230px',
+                      background: '#f7f1f3',
+                      border: '1.5px solid var(--stroke)',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <img
+                        src={homeForm.slides[activeSlideIndex].image || '/images/hero-abaya-pink.jpg'}
+                        alt="Aperçu diapositive"
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/images/hero-abaya-pink.jpg';
+                        }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'linear-gradient(90deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.72) 48%, rgba(255,255,255,0.12) 100%)'
+                      }} />
+                      <div style={{ position: 'relative', zIndex: 2, padding: '28px 34px', maxWidth: '460px' }}>
+                        <span style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '2px', color: 'var(--pink)', textTransform: 'uppercase' }}>
+                          {homeForm.slides[activeSlideIndex].eyebrow || 'NOUVELLE COLLECTION'}
+                        </span>
+                        <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '24px', margin: '6px 0 8px', color: 'var(--ink)' }}>
+                          {homeForm.slides[activeSlideIndex].top || 'Élégance'}{' '}
+                          <span style={{ color: 'var(--pink)' }}>{homeForm.slides[activeSlideIndex].accent || 'au quotidien'}</span>
+                        </h2>
+                        <p style={{ fontSize: '12.5px', color: 'var(--ink-secondary)', margin: '0 0 14px', lineHeight: 1.4 }}>
+                          {homeForm.slides[activeSlideIndex].desc || 'Description de la collection'}
+                        </p>
+                        <div style={{
+                          display: 'inline-block',
+                          background: 'var(--pink)',
+                          color: '#fff',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          padding: '7px 18px',
+                          borderRadius: '50px'
+                        }}>
+                          {homeForm.slides[activeSlideIndex].buttonText || 'Découvrir la collection'} →
+                        </div>
+                      </div>
+                      <div style={{ position: 'absolute', bottom: '12px', right: '16px', zIndex: 2, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '11px', padding: '3px 8px', borderRadius: '6px' }}>
+                        Aperçu en direct · Diapositive {activeSlideIndex + 1}
+                      </div>
+                    </div>
+
+                    {/* Image Selector */}
+                    <div style={{ background: 'var(--bg)', padding: '18px', borderRadius: '14px', border: '1px solid var(--stroke)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>
+                          Image de la diapositive {activeSlideIndex + 1} *
+                        </label>
+                        <span style={{ fontSize: '11.5px', color: 'var(--muted)' }}>Format paysage recommandé (1200x600 px)</span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <label className="btn btn-primary btn-sm" style={{ cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          📁 Téléverser une photo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) {
+                                uploadVisualImage(f, (url) => {
+                                  const newSlides = [...homeForm.slides];
+                                  newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], image: url };
+                                  setHomeForm({ ...homeForm, slides: newSlides });
+                                });
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                        </label>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '280px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>ou URL :</span>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ fontSize: '12px', padding: '7px 12px' }}
+                            placeholder="URL de l'image (/images/... ou https://...)"
+                            value={homeForm.slides[activeSlideIndex].image}
+                            onChange={(e) => {
+                              const newSlides = [...homeForm.slides];
+                              newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], image: e.target.value };
+                              setHomeForm({ ...homeForm, slides: newSlides });
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick presets */}
+                      <div style={{ marginTop: '14px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', marginBottom: '6px' }}>
+                          Ou choisir une image de la boutique :
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px' }}>
+                          {PRESET_IMAGES.map((preset, pIdx) => (
+                            <button
+                              key={pIdx}
+                              type="button"
+                              onClick={() => {
+                                const newSlides = [...homeForm.slides];
+                                newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], image: preset.url };
+                                setHomeForm({ ...homeForm, slides: newSlides });
+                                showToast(`Image "${preset.label}" appliquée à la diapo ${activeSlideIndex + 1}`);
+                              }}
+                              style={{
+                                border: homeForm.slides[activeSlideIndex].image === preset.url ? '2px solid var(--pink)' : '1px solid var(--stroke)',
+                                background: '#fff',
+                                borderRadius: '8px',
+                                padding: '4px 10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                cursor: 'pointer',
+                                fontSize: '11.5px',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
+                              }}
+                            >
+                              <img src={preset.url} alt="" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Text Form Fields for this slide */}
+                    <div className="form-grid">
+                      <div className="form-field">
+                        <label className="form-label">Surtitre (badge haut)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={homeForm.slides[activeSlideIndex].eyebrow}
+                          onChange={(e) => {
+                            const newSlides = [...homeForm.slides];
+                            newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], eyebrow: e.target.value };
+                            setHomeForm({ ...homeForm, slides: newSlides });
+                          }}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label className="form-label">Titre principal</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={homeForm.slides[activeSlideIndex].top}
+                          onChange={(e) => {
+                            const newSlides = [...homeForm.slides];
+                            newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], top: e.target.value };
+                            setHomeForm({ ...homeForm, slides: newSlides });
+                          }}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label className="form-label">Texte en rose (accent)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={homeForm.slides[activeSlideIndex].accent}
+                          onChange={(e) => {
+                            const newSlides = [...homeForm.slides];
+                            newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], accent: e.target.value };
+                            setHomeForm({ ...homeForm, slides: newSlides });
+                          }}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label className="form-label">Texte du bouton</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={homeForm.slides[activeSlideIndex].buttonText || 'Découvrir la collection'}
+                          onChange={(e) => {
+                            const newSlides = [...homeForm.slides];
+                            newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], buttonText: e.target.value };
+                            setHomeForm({ ...homeForm, slides: newSlides });
+                          }}
+                        />
+                      </div>
+                      <div className="form-field full">
+                        <label className="form-label">Description sous le titre</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={homeForm.slides[activeSlideIndex].desc}
+                          onChange={(e) => {
+                            const newSlides = [...homeForm.slides];
+                            newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], desc: e.target.value };
+                            setHomeForm({ ...homeForm, slides: newSlides });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ================= SECTION 2: CARTES CATÉGORIES (ABAYAS & CROCS) ================= */}
+              <div className="panel-card">
+                <div className="panel-header" style={{ borderBottom: '1px solid var(--stroke-light)', paddingBottom: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>👗👡</span> 2. Cartes de Collections (Abayas & Crocs)
+                    </h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--muted)' }}>
+                      Les deux grandes cartes horizontales sous le carrousel. Cliquez pour changer leur photographie ou titre.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '22px' }}>
+                  {homeForm.categoryCards.map((card, cIdx) => (
+                    <div key={card.id || cIdx} style={{
+                      background: 'var(--bg)',
+                      borderRadius: '16px',
+                      border: '1.5px solid var(--stroke)',
+                      padding: '20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '16px'
+                    }}>
+                      {/* Visual preview */}
+                      <div style={{ position: 'relative', height: '180px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--stroke)' }}>
+                        <img
+                          src={card.image || (card.id === 'abayas' ? '/images/category-abayas.jpg' : '/images/category-crocs.jpg')}
+                          alt={card.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = card.id === 'abayas' ? '/images/category-abayas.jpg' : '/images/category-crocs.jpg';
+                          }}
+                        />
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: 'linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.7) 100%)'
+                        }} />
+                        <div style={{ position: 'absolute', bottom: '14px', left: '16px', color: '#fff' }}>
+                          <strong style={{ fontSize: '17px', display: 'block', fontFamily: "'Playfair Display', serif" }}>{card.title}</strong>
+                          <span style={{ fontSize: '12px', opacity: 0.9 }}>{card.subtitle}</span>
+                        </div>
+                      </div>
+
+                      {/* Photo change buttons */}
+                      <div>
+                        <label className="form-label" style={{ fontSize: '11.5px', marginBottom: '6px' }}>Photo de la carte {card.title} :</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <label className="btn btn-primary btn-sm" style={{ cursor: 'pointer', margin: 0, fontSize: '11.5px', padding: '6px 12px' }}>
+                            📷 Téléverser
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  uploadVisualImage(f, (url) => {
+                                    const newCards = [...homeForm.categoryCards];
+                                    newCards[cIdx] = { ...newCards[cIdx], image: url };
+                                    setHomeForm({ ...homeForm, categoryCards: newCards });
+                                  });
+                                  e.target.value = '';
+                                }
+                              }}
+                            />
+                          </label>
+
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ fontSize: '11.5px', padding: '6px 10px', flex: 1 }}
+                            placeholder="URL de l'image..."
+                            value={card.image}
+                            onChange={(e) => {
+                              const newCards = [...homeForm.categoryCards];
+                              newCards[cIdx] = { ...newCards[cIdx], image: e.target.value };
+                              setHomeForm({ ...homeForm, categoryCards: newCards });
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Presets */}
+                      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                        {PRESET_IMAGES.map((preset, pIdx) => (
+                          <button
+                            key={pIdx}
+                            type="button"
+                            onClick={() => {
+                              const newCards = [...homeForm.categoryCards];
+                              newCards[cIdx] = { ...newCards[cIdx], image: preset.url };
+                              setHomeForm({ ...homeForm, categoryCards: newCards });
+                              showToast(`Image "${preset.label}" sélectionnée`);
+                            }}
+                            style={{
+                              border: card.image === preset.url ? '2px solid var(--pink)' : '1px solid var(--stroke)',
+                              background: '#fff',
+                              borderRadius: '6px',
+                              padding: '3px 8px',
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Text fields */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div className="form-field" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11.5px' }}>Titre</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ fontSize: '12px', padding: '6px 10px' }}
+                            value={card.title}
+                            onChange={(e) => {
+                              const newCards = [...homeForm.categoryCards];
+                              newCards[cIdx] = { ...newCards[cIdx], title: e.target.value };
+                              setHomeForm({ ...homeForm, categoryCards: newCards });
+                            }}
+                          />
+                        </div>
+                        <div className="form-field" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11.5px' }}>Sous-titre</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ fontSize: '12px', padding: '6px 10px' }}
+                            value={card.subtitle}
+                            onChange={(e) => {
+                              const newCards = [...homeForm.categoryCards];
+                              newCards[cIdx] = { ...newCards[cIdx], subtitle: e.target.value };
+                              setHomeForm({ ...homeForm, categoryCards: newCards });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ================= SECTION 3: GRANDE BANNIÈRE PROMO (BAS DE PAGE) ================= */}
+              <div className="panel-card">
+                <div className="panel-header" style={{ borderBottom: '1px solid var(--stroke-light)', paddingBottom: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>🎀</span> 3. Grande Bannière Promo / Vedette (Bas de page)
+                    </h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--muted)' }}>
+                      La bannière d&apos;accroche pleine largeur affichée juste avant le pied de page.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'center' }}>
+                  {/* Preview */}
+                  <div style={{ position: 'relative', height: '210px', borderRadius: '16px', overflow: 'hidden', border: '1.5px solid var(--stroke)' }}>
+                    <img
+                      src={homeForm.promoBanner.image || '/images/promo-crocs.jpg'}
+                      alt="Aperçu promo"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/promo-crocs.jpg';
+                      }}
+                    />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 100%)' }} />
+                    <div style={{ position: 'absolute', bottom: '16px', left: '18px', right: '18px', color: '#fff' }}>
+                      <h4 style={{ margin: '0 0 4px', fontFamily: "'Playfair Display', serif", fontSize: '18px' }}>{homeForm.promoBanner.title}</h4>
+                      <p style={{ margin: 0, fontSize: '12px', opacity: 0.9 }}>{homeForm.promoBanner.desc}</p>
+                    </div>
+                  </div>
+
+                  {/* Edit fields */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div>
+                      <label className="form-label" style={{ marginBottom: '6px' }}>Image de la bannière promo *</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <label className="btn btn-primary btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
+                          📷 Téléverser
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) {
+                                uploadVisualImage(f, (url) => {
+                                  setHomeForm({
+                                    ...homeForm,
+                                    promoBanner: { ...homeForm.promoBanner, image: url }
+                                  });
+                                });
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          style={{ fontSize: '12px', padding: '6px 10px', flex: 1 }}
+                          value={homeForm.promoBanner.image}
+                          onChange={(e) => setHomeForm({
+                            ...homeForm,
+                            promoBanner: { ...homeForm.promoBanner, image: e.target.value }
+                          })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-field" style={{ margin: 0 }}>
+                      <label className="form-label">Titre de la bannière</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={homeForm.promoBanner.title}
+                        onChange={(e) => setHomeForm({
+                          ...homeForm,
+                          promoBanner: { ...homeForm.promoBanner, title: e.target.value }
+                        })}
+                      />
+                    </div>
+
+                    <div className="form-field" style={{ margin: 0 }}>
+                      <label className="form-label">Description</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={homeForm.promoBanner.desc}
+                        onChange={(e) => setHomeForm({
+                          ...homeForm,
+                          promoBanner: { ...homeForm.promoBanner, desc: e.target.value }
+                        })}
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="form-field" style={{ margin: 0 }}>
+                        <label className="form-label">Texte du bouton</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={homeForm.promoBanner.buttonText}
+                          onChange={(e) => setHomeForm({
+                            ...homeForm,
+                            promoBanner: { ...homeForm.promoBanner, buttonText: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="form-field" style={{ margin: 0 }}>
+                        <label className="form-label">Lien du bouton</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={homeForm.promoBanner.buttonLink}
+                          onChange={(e) => setHomeForm({
+                            ...homeForm,
+                            promoBanner: { ...homeForm.promoBanner, buttonLink: e.target.value }
+                          })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Save & Preview Bar */}
+              <div style={{
+                position: 'sticky',
+                bottom: '16px',
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1.5px solid var(--stroke)',
+                borderRadius: '16px',
+                padding: '14px 20px',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
+                zIndex: 20
+              }}>
+                <div style={{ fontSize: '13px', color: 'var(--ink)' }}>
+                  ✨ <strong>Persistance Cloud :</strong> Toutes les images enregistrées sont sauvegardées sur Supabase Cloud et conservées à chaque redéploiement.
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <Link href="/" target="_blank" className="btn btn-outline btn-sm">
+                    👁️ Voir l&apos;accueil
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleSaveHomeVisuals}
+                    className="btn btn-primary"
+                    disabled={isSavingHome}
+                  >
+                    {isSavingHome ? 'Enregistrement...' : '💾 Enregistrer tous les visuels'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: SETTINGS */}
           {activeTab === 'settings' && (
             <div style={{ maxWidth: '800px' }}>
               <div className="panel-card" style={{ marginBottom: '24px' }}>
