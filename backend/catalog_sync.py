@@ -20,6 +20,7 @@ DEFAULT_HOMEPAGE = {
             "accent": "au quotidien",
             "desc": "Des abayas modernes et des Crocs tendance pour un style qui vous ressemble.",
             "image": "/images/hero-abaya-pink.jpg",
+            "objectPosition": "center 15%",
             "buttonText": "Découvrir la collection",
             "buttonLink": "/boutique"
         },
@@ -30,6 +31,7 @@ DEFAULT_HOMEPAGE = {
             "accent": "en toute simplicité",
             "desc": "Découvrez des pièces élégantes et confortables à porter chaque jour.",
             "image": "/images/hero-abaya-pink.jpg",
+            "objectPosition": "center 15%",
             "buttonText": "Voir les abayas",
             "buttonLink": "/boutique?categorie=abayas"
         },
@@ -40,6 +42,7 @@ DEFAULT_HOMEPAGE = {
             "accent": "douceur",
             "desc": "Des essentiels féminins sélectionnés avec soin pour vous.",
             "image": "/images/hero-abaya-pink.jpg",
+            "objectPosition": "center 15%",
             "buttonText": "Nos créations",
             "buttonLink": "/boutique"
         }
@@ -50,6 +53,7 @@ DEFAULT_HOMEPAGE = {
             "title": "Abayas",
             "subtitle": "Élégance, confort et modernité",
             "image": "/images/category-abayas.jpg",
+            "objectPosition": "center 15%",
             "link": "/boutique?categorie=abayas"
         },
         {
@@ -57,6 +61,7 @@ DEFAULT_HOMEPAGE = {
             "title": "Crocs",
             "subtitle": "Confort et style au quotidien",
             "image": "/images/category-crocs.jpg",
+            "objectPosition": "center",
             "link": "/boutique?categorie=crocs"
         }
     ],
@@ -64,6 +69,7 @@ DEFAULT_HOMEPAGE = {
         "title": "Confort & Élégance",
         "desc": "Découvrez notre sélection de Crocs tendance pour toutes les occasions.",
         "image": "/images/promo-crocs.jpg",
+        "objectPosition": "center",
         "buttonText": "Découvrir les Crocs",
         "buttonLink": "/boutique?categorie=crocs"
     }

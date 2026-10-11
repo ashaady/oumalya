@@ -2297,7 +2297,8 @@ export default function AdminPage() {
                           inset: 0,
                           width: '100%',
                           height: '100%',
-                          objectFit: 'cover'
+                          objectFit: 'cover',
+                          objectPosition: homeForm.slides[activeSlideIndex].objectPosition || 'center 15%'
                         }}
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = '/images/hero-abaya-pink.jpg';
@@ -2419,6 +2420,34 @@ export default function AdminPage() {
                           ))}
                         </div>
                       </div>
+
+                      {/* Image Framing / Focus position */}
+                      <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed var(--stroke)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                          <div>
+                            <label className="form-label" style={{ margin: 0, fontSize: '12px', fontWeight: 700 }}>
+                              🎯 Cadrage &amp; Alignement vertical de la photo :
+                            </label>
+                            <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block' }}>
+                              Ajuste la photo pour que le visage, le hijab et les détails du modèle soient bien visibles sans être coupés.
+                            </span>
+                          </div>
+                          <select
+                            className="form-input"
+                            style={{ maxWidth: '300px', fontSize: '12px', padding: '6px 10px' }}
+                            value={homeForm.slides[activeSlideIndex].objectPosition || 'center 15%'}
+                            onChange={(e) => {
+                              const newSlides = [...homeForm.slides];
+                              newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], objectPosition: e.target.value };
+                              setHomeForm({ ...homeForm, slides: newSlides });
+                            }}
+                          >
+                            <option value="center 15%">Haut / Visage &amp; Hijab (Recommandé pour Abayas)</option>
+                            <option value="center">Centré (Standard)</option>
+                            <option value="center 85%">Bas</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Text Form Fields for this slide */}
@@ -2522,7 +2551,12 @@ export default function AdminPage() {
                         <img
                           src={card.image || (card.id === 'abayas' ? '/images/category-abayas.jpg' : '/images/category-crocs.jpg')}
                           alt={card.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: card.objectPosition || (card.id === 'abayas' ? 'center 15%' : 'center')
+                          }}
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = card.id === 'abayas' ? '/images/category-abayas.jpg' : '/images/category-crocs.jpg';
                           }}
@@ -2604,6 +2638,25 @@ export default function AdminPage() {
                         ))}
                       </div>
 
+                      {/* Framing / Focus alignment */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', paddingTop: '4px' }}>
+                        <label className="form-label" style={{ fontSize: '11.5px', margin: 0, whiteSpace: 'nowrap' }}>🎯 Cadrage photo :</label>
+                        <select
+                          className="form-input"
+                          style={{ fontSize: '11.5px', padding: '5px 8px', flex: 1 }}
+                          value={card.objectPosition || (card.id === 'abayas' ? 'center 15%' : 'center')}
+                          onChange={(e) => {
+                            const newCards = [...homeForm.categoryCards];
+                            newCards[cIdx] = { ...newCards[cIdx], objectPosition: e.target.value };
+                            setHomeForm({ ...homeForm, categoryCards: newCards });
+                          }}
+                        >
+                          <option value="center 15%">Haut (Recommandé pour Abayas)</option>
+                          <option value="center">Centré (Recommandé pour Crocs)</option>
+                          <option value="center 85%">Bas</option>
+                        </select>
+                      </div>
+
                       {/* Text fields */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                         <div className="form-field" style={{ margin: 0 }}>
@@ -2659,7 +2712,12 @@ export default function AdminPage() {
                     <img
                       src={homeForm.promoBanner.image || '/images/promo-crocs.jpg'}
                       alt="Aperçu promo"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: homeForm.promoBanner.objectPosition || 'center'
+                      }}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/images/promo-crocs.jpg';
                       }}
@@ -2707,6 +2765,24 @@ export default function AdminPage() {
                           })}
                         />
                       </div>
+                    </div>
+
+                    {/* Framing / Alignment */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                      <label className="form-label" style={{ fontSize: '11.5px', margin: 0 }}>🎯 Cadrage photo :</label>
+                      <select
+                        className="form-input"
+                        style={{ fontSize: '11.5px', padding: '5px 8px', flex: 1 }}
+                        value={homeForm.promoBanner.objectPosition || 'center'}
+                        onChange={(e) => setHomeForm({
+                          ...homeForm,
+                          promoBanner: { ...homeForm.promoBanner, objectPosition: e.target.value }
+                        })}
+                      >
+                        <option value="center 15%">Haut</option>
+                        <option value="center">Centré (Standard)</option>
+                        <option value="center 85%">Bas</option>
+                      </select>
                     </div>
 
                     <div className="form-field" style={{ margin: 0 }}>

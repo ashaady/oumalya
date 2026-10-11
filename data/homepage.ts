@@ -5,6 +5,7 @@ export interface HomeSlide {
   accent: string;
   desc: string;
   image: string;
+  objectPosition?: string;
   buttonText: string;
   buttonLink: string;
 }
@@ -14,6 +15,7 @@ export interface HomeCategoryCard {
   title: string;
   subtitle: string;
   image: string;
+  objectPosition?: string;
   link: string;
 }
 
@@ -21,6 +23,7 @@ export interface HomePromoBanner {
   title: string;
   desc: string;
   image: string;
+  objectPosition?: string;
   buttonText: string;
   buttonLink: string;
 }

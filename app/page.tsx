@@ -119,10 +119,13 @@ export default function HomePage() {
         {/* Hero Section */}
         <section aria-label="Collection OUMALYA" className="hero">
           <img
-            alt="Abaya rose élégante et sac à main"
+            alt={slides[currentSlide].top || 'Hero'}
             className="hero-photo"
             fetchPriority="high"
             src={slides[currentSlide].image}
+            style={{
+              objectPosition: slides[currentSlide].objectPosition || 'center 15%'
+            }}
           />
           <div className="hero-content">
             <p className="eyebrow">{slides[currentSlide].eyebrow}</p>
@@ -168,18 +171,29 @@ export default function HomePage() {
           {/* Categories Section */}
           <section aria-label="Nos catégories" className="categories">
             {homeSettings?.categoryCards && homeSettings.categoryCards.length > 0 ? (
-              homeSettings.categoryCards.map((card) => (
-                <article key={card.id} className={`category ${card.id}`} id={card.id}>
-                  <img alt={card.title} className="category-photo" loading="lazy" src={card.image} />
-                  <div className="category-copy">
-                    <h2>{card.title}</h2>
-                    <p>{card.subtitle}</p>
-                    <Link className="pill-button" href={card.link}>
-                      Voir la collection <svg><use href="#i-arrow"></use></svg>
-                    </Link>
-                  </div>
-                </article>
-              ))
+              homeSettings.categoryCards.map((card) => {
+                const isAbaya = card.id === 'abayas' || card.id === 'abaya';
+                const cardClass = isAbaya ? 'category abaya abayas' : `category ${card.id}`;
+                const objectPos = card.objectPosition || (isAbaya ? 'center 15%' : 'center');
+                return (
+                  <article key={card.id} className={cardClass} id={card.id}>
+                    <img
+                      alt={card.title}
+                      className="category-photo"
+                      loading="lazy"
+                      src={card.image}
+                      style={{ objectPosition: objectPos }}
+                    />
+                    <div className="category-copy">
+                      <h2>{card.title}</h2>
+                      <p>{card.subtitle}</p>
+                      <Link className="pill-button" href={card.link}>
+                        Voir la collection <svg><use href="#i-arrow"></use></svg>
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })
             ) : (
               <>
                 <article className="category abaya" id="abayas">
@@ -277,6 +291,9 @@ export default function HomePage() {
               className="promo-photo"
               loading="lazy"
               src={homeSettings?.promoBanner?.image || '/images/promo-crocs.jpg'}
+              style={{
+                objectPosition: homeSettings?.promoBanner?.objectPosition || 'center'
+              }}
             />
             <div className="promo-copy">
               <h2>{homeSettings?.promoBanner?.title || 'Confort & Élégance'}</h2>
