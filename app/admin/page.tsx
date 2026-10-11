@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useAuth, useUser, SignIn, SignOutButton, UserButton } from '@clerk/nextjs';
 import { useCart } from '@/context/CartContext';
 import { Product, formatPrice } from '@/data/products';
 
@@ -58,6 +59,85 @@ export default function AdminPage() {
     deleteCategory,
     showToast
   } = useCart();
+
+  // --- CLERK AUTH & 2-ADMIN WHITELIST VERIFICATION ---
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
+
+  const [adminStatus, setAdminStatus] = useState<'loading' | 'unauthenticated' | 'checking' | 'authorized' | 'rejected'>('loading');
+  const [adminData, setAdminData] = useState<{
+    authorized: boolean;
+    clerk_user_id: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    role: string;
+    admin_slot: number;
+    total_admins: number;
+    max_admins: number;
+    message?: string;
+  } | null>(null);
+  const [adminErrorMsg, setAdminErrorMsg] = useState<string>('');
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      const token = await getToken();
+      if (token) {
+        return { 'Authorization': `Bearer ${token}` };
+      }
+    } catch {}
+    return {};
+  };
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setAdminStatus('unauthenticated');
+      return;
+    }
+
+    let isMounted = true;
+    const verifyAdminRole = async () => {
+      setAdminStatus('checking');
+      try {
+        const token = await getToken();
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const res = await fetch('/api/admin/verify', {
+          method: 'GET',
+          headers
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setAdminData(data);
+            setAdminStatus('authorized');
+          }
+        } else if (res.status === 403) {
+          const errData = await res.json().catch(() => ({}));
+          if (isMounted) {
+            setAdminErrorMsg(errData.detail || "Accès refusé : la limite des 2 administrateurs autorisés a été atteinte pour Oumalya.");
+            setAdminStatus('rejected');
+          }
+        } else {
+          if (isMounted) {
+            setAdminStatus('authorized');
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          setAdminStatus('authorized');
+        }
+      }
+    };
+
+    verifyAdminRole();
+    return () => { isMounted = false; };
+  }, [isLoaded, isSignedIn, getToken]);
 
   // Navigation tab
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
@@ -170,7 +250,8 @@ export default function AdminPage() {
   const fetchOrders = async () => {
     setIsLoadingOrders(true);
     try {
-      const res = await fetch('/api/orders');
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch('/api/orders', { headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -186,14 +267,19 @@ export default function AdminPage() {
 
   // Initial load
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (adminStatus === 'authorized') {
+      fetchOrders();
+    }
+  }, [adminStatus]);
 
   // Real-time automatic polling every 4.5 seconds
   useEffect(() => {
+    if (adminStatus !== 'authorized') return;
+
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/orders');
+        const authHeaders = await getAuthHeaders();
+        const res = await fetch('/api/orders', { headers: authHeaders });
         if (res.ok) {
           const latest: Order[] = await res.json();
           if (Array.isArray(latest)) {
@@ -217,7 +303,7 @@ export default function AdminPage() {
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [showToast]);
+  }, [adminStatus, showToast]);
 
   const handleLogout = () => {
     showToast('Redirection vers la boutique publique...');
@@ -229,9 +315,10 @@ export default function AdminPage() {
   // Order Status Update
   const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch('/api/orders', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ id: orderId, status: newStatus })
       });
       if (res.ok) {
@@ -377,8 +464,10 @@ export default function AdminPage() {
         const uploadData = new FormData();
         uploadData.append('file', file);
 
+        const authHeaders = await getAuthHeaders();
         const res = await fetch('/api/upload', {
           method: 'POST',
+          headers: authHeaders,
           body: uploadData
         });
 
@@ -600,6 +689,220 @@ export default function AdminPage() {
     );
   }
 
+  // --- 1. LOADING / CHECKING STATE ---
+  if (!isLoaded || adminStatus === 'loading' || adminStatus === 'checking') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0a0a0c',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#fff',
+        fontFamily: "'DM Sans', sans-serif"
+      }}>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          border: '3px solid rgba(212,175,55,0.2)',
+          borderTopColor: '#d4af37',
+          borderRadius: '50%',
+          animation: 'spin 0.9s linear infinite',
+          marginBottom: '20px'
+        }} />
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', letterSpacing: '0.05em', color: '#d4af37', margin: 0 }}>
+          OUMALYA CLOTHING
+        </h2>
+        <p style={{ color: '#888', fontSize: '14px', marginTop: '8px' }}>
+          {adminStatus === 'checking' ? 'Vérification des accès administrateur...' : 'Initialisation sécurisée...'}
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // --- 2. UNAUTHENTICATED STATE (CLERK SIGN IN) ---
+  if (!isSignedIn || adminStatus === 'unauthenticated') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0b0b0e 0%, #15151c 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        color: '#fff',
+        fontFamily: "'DM Sans', sans-serif"
+      }}>
+        <div style={{
+          maxWidth: '460px',
+          width: '100%',
+          textAlign: 'center',
+          marginBottom: '24px'
+        }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <h1 style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '32px',
+              letterSpacing: '0.08em',
+              color: '#d4af37',
+              margin: '0 0 4px 0'
+            }}>
+              OUMALYA
+            </h1>
+          </Link>
+          <div style={{
+            display: 'inline-block',
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.15em',
+            color: '#a0a0a5',
+            border: '1px solid rgba(212,175,55,0.3)',
+            padding: '4px 12px',
+            borderRadius: '999px',
+            marginTop: '8px'
+          }}>
+            Espace Administration Sécurisé
+          </div>
+          <p style={{ color: '#9a9aa2', fontSize: '13px', marginTop: '12px', lineHeight: 1.5 }}>
+            Connexion réservée aux administrateurs autorisés de la boutique Oumalya. Authentifiez-vous pour gérer le catalogue, les stocks et les commandes.
+          </p>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          width: '100%',
+          maxWidth: '480px'
+        }}>
+          <SignIn routing="hash" />
+        </div>
+
+        <div style={{ marginTop: '28px' }}>
+          <Link
+            href="/"
+            style={{
+              color: '#a0a0a5',
+              fontSize: '13px',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.03)'
+            }}
+          >
+            ← Retour à la boutique publique
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 3. REJECTED STATE (MAX 2 ADMINS ENFORCED) ---
+  if (adminStatus === 'rejected') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0e0e12',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        color: '#fff',
+        fontFamily: "'DM Sans', sans-serif"
+      }}>
+        <div style={{
+          maxWidth: '520px',
+          width: '100%',
+          background: '#15151b',
+          borderRadius: '16px',
+          border: '1px solid rgba(220, 53, 69, 0.3)',
+          padding: '40px 32px',
+          textAlign: 'center',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: 'rgba(220, 53, 69, 0.15)',
+            color: '#ff4d6d',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '32px',
+            margin: '0 auto 20px auto'
+          }}>
+            🔒
+          </div>
+
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '26px', color: '#ff4d6d', margin: '0 0 12px 0' }}>
+            Accès Administrateur Refusé
+          </h2>
+
+          <p style={{ color: '#e0e0e0', fontSize: '15px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
+            {adminErrorMsg || "La limite des 2 administrateurs Oumalya autorisés a été atteinte."}
+          </p>
+
+          <div style={{
+            background: 'rgba(255,255,255,0.04)',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            color: '#a0a0a5',
+            marginBottom: '28px',
+            border: '1px solid rgba(255,255,255,0.08)'
+          }}>
+            Compte connecté : <strong>{user?.primaryEmailAddress?.emailAddress || user?.id}</strong>
+            <br />
+            Seuls les 2 premiers administrateurs connectés ont accès à ce tableau de bord.
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <SignOutButton>
+              <button style={{
+                background: '#ff4d6d',
+                color: '#fff',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}>
+                Se déconnecter
+              </button>
+            </SignOutButton>
+
+            <Link
+              href="/"
+              style={{
+                background: 'transparent',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.2)',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '13px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+            >
+              Retour à la boutique
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ==================== MAIN DASHBOARD LAYOUT ====================
   return (
     <div className="oumalya-admin">
@@ -673,28 +976,36 @@ export default function AdminPage() {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-profile">
-            <div className="avatar-circle">O</div>
-            <div className="user-meta">
-              <strong>Admin Oumalya</strong>
-              <small>Accès direct</small>
+          <div className="user-profile" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+              <UserButton />
+              <div className="user-meta" style={{ minWidth: 0, overflow: 'hidden' }}>
+                <strong style={{ fontSize: '13px', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {user?.fullName || user?.firstName || 'Admin Oumalya'}
+                </strong>
+                <span style={{ fontSize: '11px', color: '#d4af37', fontWeight: 600, display: 'block' }}>
+                  ⭐ Admin #{adminData?.admin_slot || 1} / {adminData?.max_admins || 2}
+                </span>
+                <small style={{ fontSize: '10px', color: 'var(--muted)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {user?.primaryEmailAddress?.emailAddress}
+                </small>
+              </div>
             </div>
-            <button
-              onClick={handleLogout}
-              title="Retour à la boutique publique"
+            <Link
+              href="/"
+              title="Voir la boutique publique"
               style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
                 color: 'var(--muted)',
-                padding: '4px',
-                fontSize: '12px'
+                padding: '6px',
+                display: 'inline-flex',
+                borderRadius: '6px',
+                background: 'rgba(255,255,255,0.05)'
               }}
             >
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-            </button>
+            </Link>
           </div>
         </div>
       </aside>

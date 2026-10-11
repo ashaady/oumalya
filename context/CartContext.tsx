@@ -150,6 +150,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
+  const getClerkAuthHeaders = async (): Promise<Record<string, string>> => {
+    try {
+      if (typeof window !== 'undefined' && (window as any).Clerk?.session) {
+        const token = await (window as any).Clerk.session.getToken();
+        if (token) {
+          return { 'Authorization': `Bearer ${token}` };
+        }
+      }
+    } catch {}
+    return {};
+  };
+
   const addCategory = useCallback(async (data: Partial<CategoryItem>): Promise<CategoryItem | null> => {
     if (!data.name || !data.name.trim()) {
       showToast('Le nom de la catégorie est obligatoire');
@@ -183,9 +195,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
 
     try {
+      const authHeaders = await getClerkAuthHeaders();
       const res = await fetch('/api/categories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(newCat)
       });
       if (res.ok) {
@@ -221,8 +234,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
 
     try {
+      const authHeaders = await getClerkAuthHeaders();
       const res = await fetch(`/api/categories?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: authHeaders
       });
       if (res.ok) {
         showToast('Catégorie supprimée');
@@ -238,9 +253,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addProduct = useCallback(async (data: Partial<Product>): Promise<Product | null> => {
     try {
+      const authHeaders = await getClerkAuthHeaders();
       const res = await fetch('/api/products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(data)
       });
       const json = await res.json();
@@ -321,9 +337,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Persist to API and SQLite in the background
     try {
+      const authHeaders = await getClerkAuthHeaders();
       const res = await fetch('/api/products', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(data)
       });
       if (res.ok) {
@@ -349,8 +366,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const deleteProduct = useCallback(async (id: string): Promise<boolean> => {
     try {
+      const authHeaders = await getClerkAuthHeaders();
       const res = await fetch(`/api/products?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: authHeaders
       });
       const json = await res.json();
       if (json.success) {
@@ -378,7 +397,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const resetProducts = useCallback(async () => {
     try {
-      const res = await fetch('/api/products?reset=true');
+      const authHeaders = await getClerkAuthHeaders();
+      const res = await fetch('/api/products?reset=true', {
+        headers: authHeaders
+      });
       if (res.ok) {
         const data = await res.json();
         setProducts(data);

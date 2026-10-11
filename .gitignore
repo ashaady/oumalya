@@ -24,6 +24,8 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env
+.env.production
 
 # vercel
 .vercel
@@ -35,3 +37,7 @@ yarn-error.log*
 *.db-journal
 *.db-wal
 *.db-shm
+*.db
+backend/*.db*
+backend/__pycache__
+__pycache__

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { ClerkProvider } from '@clerk/nextjs';
 import '@/styles/globals.css';
 import '@/styles/home.scoped.css';
 import '@/styles/boutique.scoped.css';
@@ -23,20 +24,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
-        <CartProvider>
-          {children}
-        </CartProvider>
-      </body>
-    </html>
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_ZmFzdC10b3J0b2lzZS01MTUuY2xlcmsuYWNjb3VudHMuZGV2JA'}>
+      <html lang="fr">
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+          <link
+            href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+            rel="stylesheet"
+          />
+        </head>
+        <body>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

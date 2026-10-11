@@ -14,7 +14,7 @@ const nextConfig = {
     return config;
   },
   async rewrites() {
-    return [
+    const rewrites = [
       { source: '/index.html', destination: '/' },
       { source: '/boutique.html', destination: '/boutique' },
       { source: '/produit.html', destination: '/produit' },
@@ -25,6 +25,16 @@ const nextConfig = {
       { source: '/livraison.html', destination: '/livraison' },
       { source: '/favoris.html', destination: '/favoris' }
     ];
+
+    const fastapiUrl = process.env.FASTAPI_URL || process.env.NEXT_PUBLIC_FASTAPI_URL;
+    if (fastapiUrl) {
+      rewrites.push({
+        source: '/api/:path*',
+        destination: `${fastapiUrl}/api/:path*`
+      });
+    }
+
+    return rewrites;
   }
 };
 
