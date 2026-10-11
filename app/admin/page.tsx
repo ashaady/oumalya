@@ -50,16 +50,16 @@ type TabKey = 'dashboard' | 'products' | 'orders' | 'settings';
 const clerkOumalyaAppearance = {
   variables: {
     colorPrimary: '#eb5c8e',
-    colorBackground: '#16141f',
-    colorText: '#ffffff',
-    colorTextSecondary: '#dedde8',
-    colorInputBackground: '#201d2a',
-    colorInputText: '#ffffff',
+    colorBackground: '#ffffff',
+    colorText: '#120e10',
+    colorTextSecondary: '#786d72',
+    colorInputBackground: '#fcf9fa',
+    colorInputText: '#120e10',
     colorTextOnPrimaryBackground: '#ffffff',
-    colorDanger: '#ff4d6d',
+    colorDanger: '#d8487d',
     colorSuccess: '#2ec4b6',
-    borderRadius: '14px',
-    fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+    borderRadius: '12px',
+    fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, Arial, sans-serif",
   },
   elements: {
     rootBox: {
@@ -67,42 +67,43 @@ const clerkOumalyaAppearance = {
       maxWidth: '440px',
     },
     card: {
-      background: '#16141f',
-      border: '1px solid rgba(235, 92, 142, 0.35)',
-      boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(235, 92, 142, 0.12)',
-      borderRadius: '20px',
-      padding: '36px 30px',
+      background: '#ffffff',
+      border: '1px solid rgba(235, 92, 142, 0.22)',
+      boxShadow: '0 20px 45px rgba(235, 92, 142, 0.08), 0 4px 16px rgba(18, 14, 16, 0.04)',
+      borderRadius: '24px',
+      padding: '38px 32px',
     },
     headerTitle: {
       fontFamily: "'Playfair Display', Georgia, serif",
-      fontSize: '25px',
-      fontWeight: '700',
-      color: '#ffffff',
-      letterSpacing: '0.01em',
+      fontSize: '24px',
+      fontWeight: '600',
+      color: '#120e10',
+      letterSpacing: '-0.01em',
     },
     headerSubtitle: {
-      color: '#dedde8',
-      fontSize: '14px',
+      color: '#6e6268',
+      fontSize: '13.5px',
       marginTop: '6px',
     },
     socialButtonsBlockButton: {
-      background: '#23202e',
-      border: '1px solid #433d56',
-      color: '#ffffff',
+      background: '#ffffff',
+      border: '1.5px solid #ede5e8',
+      color: '#120e10',
       borderRadius: '12px',
       height: '48px',
+      boxShadow: '0 2px 6px rgba(18, 14, 16, 0.03)',
     },
     socialButtonsBlockButtonText: {
-      color: '#ffffff',
+      color: '#120e10',
       fontWeight: '600',
-      fontSize: '14.5px',
+      fontSize: '14px',
     },
     formButtonPrimary: {
       background: 'linear-gradient(135deg, #eb5c8e 0%, #d8487d 100%)',
       border: 'none',
-      borderRadius: '12px',
+      borderRadius: '100px',
       color: '#ffffff',
-      fontWeight: '600',
+      fontWeight: '700',
       fontSize: '14px',
       height: '46px',
       boxShadow: '0 6px 20px rgba(235, 92, 142, 0.35)',
@@ -126,23 +127,23 @@ const clerkOumalyaAppearance = {
       display: 'none !important',
     },
     formFieldLabel: {
-      color: '#ffffff',
+      color: '#4a4044',
       fontSize: '13px',
       fontWeight: '500',
     },
     formFieldInput: {
-      background: '#201d2a',
-      border: '1px solid #433d56',
+      background: '#fcf9fa',
+      border: '1.5px solid #ede5e8',
       borderRadius: '10px',
-      color: '#ffffff',
+      color: '#120e10',
       fontSize: '14px',
       height: '44px',
     },
     dividerLine: {
-      background: 'linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.45), transparent)',
+      background: '#ede5e8',
     },
     dividerText: {
-      color: '#a5a4b5',
+      color: '#9e9196',
     },
   },
 };
@@ -794,48 +795,50 @@ export default function AdminPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0a0a0c',
+        background: 'linear-gradient(145deg, #fefafb 0%, #fcf0f4 50%, #f8e4ec 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#fff',
+        color: '#120e10',
         fontFamily: "'DM Sans', sans-serif"
       }}>
         <div style={{
-          width: '54px',
-          height: '54px',
+          width: '50px',
+          height: '50px',
           border: '3px solid rgba(235, 92, 142, 0.2)',
           borderTopColor: '#eb5c8e',
           borderRadius: '50%',
           animation: 'spin 0.85s linear infinite',
           marginBottom: '20px',
-          boxShadow: '0 0 25px rgba(235, 92, 142, 0.25)'
+          boxShadow: '0 4px 18px rgba(235, 92, 142, 0.2)'
         }} />
-        <h2 style={{
-          fontFamily: "'Playfair Display', Georgia, serif",
-          fontSize: '26px',
-          letterSpacing: '0.12em',
-          background: 'linear-gradient(135deg, #ffffff 0%, #faedef 35%, #eb5c8e 75%, #d4af37 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          margin: 0,
-          fontWeight: 700
-        }}>
-          OUMALYA
-        </h2>
-        <div style={{
-          fontSize: '9px',
-          fontWeight: 700,
-          letterSpacing: '0.3em',
-          color: '#d4af37',
-          textTransform: 'uppercase',
-          marginTop: '4px',
-          marginBottom: '10px'
-        }}>
-          Maison de Mode · Dakar
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{
+            fontFamily: "Arial, Helvetica, sans-serif",
+            fontSize: '28px',
+            letterSpacing: '11px',
+            paddingLeft: '11px',
+            color: '#120e10',
+            margin: 0,
+            fontWeight: 900
+          }}>
+            OUMALYA
+          </h2>
+          <div style={{
+            fontSize: '11px',
+            fontWeight: 800,
+            letterSpacing: '5px',
+            paddingLeft: '5px',
+            color: '#eb5c8e',
+            textTransform: 'uppercase',
+            marginTop: '4px',
+            marginBottom: '14px'
+          }}>
+            CLOTHING
+          </div>
         </div>
-        <p style={{ color: '#9e9ea8', fontSize: '13px', marginTop: '4px' }}>
+        <p style={{ color: '#6e6268', fontSize: '13.5px', marginTop: '4px', fontWeight: 500 }}>
           {adminStatus === 'checking' ? 'Vérification des accès administrateur...' : 'Initialisation de l\'espace sécurisé...'}
         </p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -848,16 +851,16 @@ export default function AdminPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0d0d12',
+        background: 'radial-gradient(ellipse at 50% 0%, #fef8fa 0%, #faedf1 50%, #f7e4eb 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '36px 20px',
-        color: '#ffffff',
+        padding: '40px 20px',
+        color: '#120e10',
         fontFamily: "'DM Sans', sans-serif"
       }}>
-        {/* Brand Header */}
+        {/* Brand Header matching official Oumalya logo */}
         <div style={{
           maxWidth: '460px',
           width: '100%',
@@ -866,42 +869,44 @@ export default function AdminPage() {
         }}>
           <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
             <h1 style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: '38px',
-              letterSpacing: '0.15em',
-              color: '#f0c868',
-              margin: '0 0 6px 0',
-              fontWeight: 700,
-              textShadow: '0 2px 12px rgba(0,0,0,0.7)'
+              fontFamily: "Arial, Helvetica, sans-serif",
+              fontSize: '34px',
+              letterSpacing: '12px',
+              paddingLeft: '12px',
+              color: '#120e10',
+              margin: '0 0 4px 0',
+              fontWeight: 900,
+              textTransform: 'uppercase'
             }}>
               OUMALYA
             </h1>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: 800,
+              letterSpacing: '6px',
+              paddingLeft: '6px',
+              color: '#eb5c8e',
+              textTransform: 'uppercase',
+              marginBottom: '16px'
+            }}>
+              CLOTHING
+            </div>
           </Link>
-
-          <div style={{
-            fontSize: '10.5px',
-            fontWeight: 700,
-            letterSpacing: '0.28em',
-            color: '#d4af37',
-            textTransform: 'uppercase',
-            marginBottom: '14px'
-          }}>
-            Maison de Mode · Dakar
-          </div>
 
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            fontSize: '11.5px',
+            fontSize: '11px',
             textTransform: 'uppercase',
             letterSpacing: '0.12em',
-            color: '#ffffff',
-            background: '#1a1824',
-            border: '1px solid #eb5c8e',
-            padding: '7px 18px',
+            color: '#eb5c8e',
+            background: '#ffffff',
+            border: '1.5px solid rgba(235, 92, 142, 0.35)',
+            padding: '6px 18px',
             borderRadius: '999px',
-            boxShadow: '0 4px 15px rgba(235, 92, 142, 0.2)'
+            boxShadow: '0 4px 14px rgba(235, 92, 142, 0.1)',
+            fontWeight: 700
           }}>
             <span style={{
               width: '7px',
@@ -910,19 +915,19 @@ export default function AdminPage() {
               background: '#eb5c8e',
               boxShadow: '0 0 8px #eb5c8e'
             }} />
-            Espace Administration Sécurisé
+            Espace Administration Privé
           </div>
 
           <p style={{
-            color: '#f0eff7',
-            fontSize: '14px',
+            color: '#6e6268',
+            fontSize: '13.5px',
             marginTop: '14px',
             lineHeight: 1.6,
-            maxWidth: '430px',
+            maxWidth: '420px',
             marginInline: 'auto',
             fontWeight: 400
           }}>
-            Connexion réservée aux administrateurs autorisés de la boutique Oumalya. Authentifiez-vous pour gérer le catalogue, les stocks et les commandes.
+            Portail de gestion de la boutique Oumalya. Authentifiez-vous pour gérer le catalogue de produits, les stocks et les commandes.
           </p>
         </div>
 
@@ -941,112 +946,114 @@ export default function AdminPage() {
 
         {/* Return Button */}
         <div style={{
-          marginTop: '28px',
+          marginTop: '26px',
           textAlign: 'center'
         }}>
           <Link
             href="/"
             style={{
-              color: '#ffffff',
+              color: '#120e10',
               fontSize: '13.5px',
-              fontWeight: 500,
+              fontWeight: 600,
               textDecoration: 'none',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '10px 22px',
+              padding: '10px 24px',
               borderRadius: '100px',
-              border: '1px solid #eb5c8e',
-              background: '#181622',
+              border: '1.5px solid rgba(235, 92, 142, 0.35)',
+              background: '#ffffff',
               transition: 'all 0.25s ease',
-              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)'
+              boxShadow: '0 4px 14px rgba(18, 14, 16, 0.05)'
             }}
           >
-            <span>←</span>
+            <span style={{ color: '#eb5c8e' }}>←</span>
             <span>Retour à la boutique publique</span>
           </Link>
         </div>
 
-        {/* Specific Inline CSS for Clerk elements */}
+        {/* Specific Inline CSS for Clerk elements matching light luxury boutique */}
         <style>{`
           .cl-rootBox {
             width: 100% !important;
             max-width: 440px !important;
           }
           .cl-card {
-            background: #16141f !important;
-            border: 1px solid rgba(235, 92, 142, 0.4) !important;
-            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 35px rgba(235, 92, 142, 0.12) !important;
+            background: #ffffff !important;
+            border: 1px solid rgba(235, 92, 142, 0.22) !important;
+            box-shadow: 0 20px 45px rgba(235, 92, 142, 0.08), 0 4px 16px rgba(18, 14, 16, 0.04) !important;
             border-radius: 20px !important;
             padding: 34px 28px !important;
-            color: #ffffff !important;
+            color: #120e10 !important;
           }
           .cl-headerTitle {
             font-family: 'Playfair Display', Georgia, serif !important;
-            color: #ffffff !important;
-            font-size: 25px !important;
-            fontWeight: 700 !important;
+            color: #120e10 !important;
+            font-size: 24px !important;
+            font-weight: 700 !important;
           }
           .cl-headerSubtitle {
-            color: #d6d5e2 !important;
-            font-size: 14px !important;
+            color: #6e6268 !important;
+            font-size: 13.5px !important;
             font-weight: 400 !important;
           }
           .cl-socialButtonsBlockButton {
-            background: #23202e !important;
-            border: 1px solid #433d56 !important;
-            color: #ffffff !important;
+            background: #ffffff !important;
+            border: 1.5px solid #ede5e8 !important;
+            color: #120e10 !important;
             border-radius: 12px !important;
             height: 48px !important;
             transition: all 0.2s ease !important;
           }
           .cl-socialButtonsBlockButton:hover {
-            background: #2d283c !important;
+            background: #fdf6f9 !important;
             border-color: #eb5c8e !important;
             transform: translateY(-1px) !important;
           }
           .cl-socialButtonsBlockButtonText {
-            color: #ffffff !important;
+            color: #120e10 !important;
             font-weight: 600 !important;
-            font-size: 14.5px !important;
+            font-size: 14px !important;
           }
           .cl-formFieldLabel {
-            color: #ffffff !important;
+            color: #120e10 !important;
             font-size: 13px !important;
-            font-weight: 500 !important;
+            font-weight: 600 !important;
           }
           .cl-formFieldInput {
-            background: #201d2a !important;
-            border: 1px solid #433d56 !important;
-            color: #ffffff !important;
+            background: #fdfafb !important;
+            border: 1.5px solid #ede5e8 !important;
+            color: #120e10 !important;
             border-radius: 10px !important;
             font-size: 14px !important;
             height: 44px !important;
           }
           .cl-formFieldInput:focus {
             border-color: #eb5c8e !important;
-            box-shadow: 0 0 0 3px rgba(235, 92, 142, 0.25) !important;
+            background: #ffffff !important;
+            box-shadow: 0 0 0 3px rgba(235, 92, 142, 0.2) !important;
           }
           .cl-formButtonPrimary {
             background: linear-gradient(135deg, #eb5c8e 0%, #d8487d 100%) !important;
             border: none !important;
             color: #ffffff !important;
             font-weight: 600 !important;
-            border-radius: 12px !important;
+            border-radius: 100px !important;
             height: 46px !important;
             font-size: 14px !important;
-            box-shadow: 0 6px 20px rgba(235, 92, 142, 0.35) !important;
+            box-shadow: 0 6px 18px rgba(235, 92, 142, 0.35) !important;
+            transition: all 0.2s ease !important;
           }
           .cl-formButtonPrimary:hover {
             background: linear-gradient(135deg, #f06999 0%, #e05286 100%) !important;
-            box-shadow: 0 8px 26px rgba(235, 92, 142, 0.5) !important;
+            box-shadow: 0 8px 24px rgba(235, 92, 142, 0.5) !important;
             transform: translateY(-1px) !important;
           }
           .cl-dividerLine {
-            background: linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.45), transparent) !important;
+            background: #ede5e8 !important;
           }
           .cl-dividerText {
-            color: #a5a4b5 !important;
+            color: #92848c !important;
             font-size: 11.5px !important;
             letter-spacing: 0.1em !important;
           }
@@ -1086,101 +1093,82 @@ export default function AdminPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'radial-gradient(ellipse at 50% 15%, rgba(220, 53, 69, 0.16) 0%, rgba(18, 16, 23, 0.96) 50%, #0a090d 100%)',
+        background: 'radial-gradient(ellipse at 50% 0%, #fef8fa 0%, #faedf1 50%, #f7e4eb 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '36px 20px',
-        color: '#fff',
-        fontFamily: "'DM Sans', sans-serif",
-        position: 'relative',
-        overflow: 'hidden'
+        color: '#120e10',
+        fontFamily: "'DM Sans', sans-serif"
       }}>
-        {/* Glow */}
-        <div style={{
-          position: 'absolute',
-          top: '8%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '500px',
-          height: '500px',
-          background: 'radial-gradient(circle, rgba(220, 53, 69, 0.15) 0%, transparent 68%)',
-          filter: 'blur(65px)',
-          pointerEvents: 'none',
-          zIndex: 0
-        }} />
-
         <div style={{
           maxWidth: '520px',
           width: '100%',
-          background: 'linear-gradient(165deg, rgba(23, 21, 28, 0.96) 0%, rgba(14, 13, 18, 0.98) 100%)',
+          background: '#ffffff',
           borderRadius: '22px',
-          border: '1px solid rgba(220, 53, 69, 0.3)',
+          border: '1.5px solid rgba(220, 53, 69, 0.3)',
           padding: '40px 32px',
           textAlign: 'center',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(220, 53, 69, 0.15)',
-          backdropFilter: 'blur(20px)',
-          position: 'relative',
-          zIndex: 1
+          boxShadow: '0 20px 50px rgba(220, 53, 69, 0.08), 0 4px 16px rgba(18, 14, 16, 0.04)'
         }}>
           <div style={{
-            width: '68px',
-            height: '68px',
+            width: '64px',
+            height: '64px',
             borderRadius: '50%',
-            background: 'rgba(220, 53, 69, 0.12)',
-            border: '1px solid rgba(220, 53, 69, 0.35)',
-            color: '#ff4d6d',
+            background: '#fff0f3',
+            border: '1.5px solid rgba(220, 53, 69, 0.35)',
+            color: '#dc3545',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '30px',
-            margin: '0 auto 20px auto',
-            boxShadow: '0 0 25px rgba(220, 53, 69, 0.2)'
+            fontSize: '28px',
+            margin: '0 auto 18px auto',
+            boxShadow: '0 4px 16px rgba(220, 53, 69, 0.15)'
           }}>
             🔒
           </div>
 
           <h2 style={{
             fontFamily: "'Playfair Display', Georgia, serif",
-            fontSize: '27px',
-            color: '#ffffff',
+            fontSize: '26px',
+            color: '#120e10',
             margin: '0 0 8px 0',
-            fontWeight: 600
+            fontWeight: 700
           }}>
             Accès Administrateur Refusé
           </h2>
 
           <div style={{
-            fontSize: '10px',
+            fontSize: '11px',
             fontWeight: 700,
-            letterSpacing: '0.25em',
-            color: '#ff4d6d',
+            letterSpacing: '0.2em',
+            color: '#dc3545',
             textTransform: 'uppercase',
             marginBottom: '16px'
           }}>
             Limite de 2 Administrateurs Atteinte
           </div>
 
-          <p style={{ color: '#d0d0d8', fontSize: '14.5px', lineHeight: 1.6, margin: '0 0 20px 0' }}>
+          <p style={{ color: '#554a50', fontSize: '14px', lineHeight: 1.6, margin: '0 0 20px 0' }}>
             {adminErrorMsg || "La limite des 2 administrateurs Oumalya autorisés a été atteinte pour ce compte."}
           </p>
 
           <div style={{
-            background: 'rgba(255, 255, 255, 0.04)',
+            background: '#fcf8fa',
             padding: '14px 18px',
             borderRadius: '12px',
             fontSize: '13px',
-            color: '#a0a0ab',
-            marginBottom: '28px',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            color: '#6e6268',
+            marginBottom: '26px',
+            border: '1px solid #ede5e8',
             textAlign: 'left'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ color: '#888' }}>Compte connecté :</span>
-              <strong style={{ color: '#fff' }}>{user?.primaryEmailAddress?.emailAddress || user?.id}</strong>
+              <span style={{ color: '#8b7f86' }}>Compte connecté :</span>
+              <strong style={{ color: '#120e10' }}>{user?.primaryEmailAddress?.emailAddress || user?.id}</strong>
             </div>
-            <div style={{ fontSize: '12px', color: '#888' }}>
+            <div style={{ fontSize: '12px', color: '#8b7f86' }}>
               Seuls les 2 premiers administrateurs enregistrés peuvent accéder aux outils de gestion de la boutique Oumalya.
             </div>
           </div>
@@ -1188,15 +1176,15 @@ export default function AdminPage() {
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <SignOutButton>
               <button style={{
-                background: 'linear-gradient(135deg, #ff4d6d 0%, #d83252 100%)',
+                background: 'linear-gradient(135deg, #eb5c8e 0%, #d8487d 100%)',
                 color: '#fff',
                 border: 'none',
                 padding: '12px 24px',
-                borderRadius: '12px',
+                borderRadius: '100px',
                 fontWeight: 600,
                 fontSize: '13px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(220, 53, 69, 0.35)'
+                boxShadow: '0 4px 16px rgba(235, 92, 142, 0.3)'
               }}>
                 Se déconnecter
               </button>
@@ -1205,12 +1193,12 @@ export default function AdminPage() {
             <Link
               href="/"
               style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: '#fff',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: '#ffffff',
+                color: '#120e10',
+                border: '1.5px solid #ede5e8',
                 padding: '12px 24px',
-                borderRadius: '12px',
-                fontWeight: 500,
+                borderRadius: '100px',
+                fontWeight: 600,
                 fontSize: '13px',
                 textDecoration: 'none',
                 display: 'inline-flex',
