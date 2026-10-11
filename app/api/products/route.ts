@@ -8,6 +8,7 @@ import {
   deleteProductFromDb,
   resetProductsInDb
 } from '@/lib/db';
+import { FASTAPI_BASE_URL } from '@/lib/fastapi';
 
 const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
 
@@ -48,12 +49,21 @@ function saveProducts(products: Product[]): boolean {
   }
 }
 
-// GET all products
+// GET all products (Proxy to FastAPI with SQLite fallback)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const reset = searchParams.get('reset');
+  const authHeader = req.headers.get('authorization');
 
+  // 1. Handle Reset
   if (reset === 'true') {
+    try {
+      await fetch(`${FASTAPI_BASE_URL}/api/products?reset=true`, {
+        headers: authHeader ? { 'authorization': authHeader } : {},
+        cache: 'no-store'
+      });
+    } catch {}
+
     try {
       resetProductsInDb(DEFAULT_PRODUCTS);
     } catch {}
@@ -61,16 +71,78 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(DEFAULT_PRODUCTS);
   }
 
+  // 2. Try fetching from FastAPI Cloud backend
+  try {
+    const queryStr = searchParams.toString();
+    const apiUrl = queryStr
+      ? `${FASTAPI_BASE_URL}/api/products?${queryStr}`
+      : `${FASTAPI_BASE_URL}/api/products`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    const apiRes = await fetch(apiUrl, {
+      signal: controller.signal,
+      headers: authHeader ? { 'authorization': authHeader } : {},
+      cache: 'no-store'
+    });
+    clearTimeout(timeout);
+
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      if (Array.isArray(data) && data.length > 0) {
+        saveProducts(data);
+        return NextResponse.json(data);
+      }
+    }
+  } catch (err) {
+    console.warn('[Products GET] FastAPI backend unreachable, using local store:', err);
+  }
+
+  // 3. Fallback to local storage
   const products = getStoredProducts();
   return NextResponse.json(products);
 }
 
-// POST: Add new product
+// POST: Add new product (Forward to FastAPI + local backup)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const products = getStoredProducts();
+    const authHeader = req.headers.get('authorization');
 
+    // Forward to FastAPI backend if available
+    try {
+      const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authHeader ? { 'authorization': authHeader } : {})
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (apiRes.status === 401 || apiRes.status === 403) {
+        const errJson = await apiRes.json().catch(() => ({}));
+        return NextResponse.json(errJson, { status: apiRes.status });
+      }
+
+      if (apiRes.ok) {
+        const json = await apiRes.json();
+        if (json.success && json.product) {
+          try { saveProductToDb(json.product); } catch {}
+          const prods = getStoredProducts();
+          const exists = prods.some(p => p.id === json.product.id);
+          const next = exists ? prods.map(p => p.id === json.product.id ? json.product : p) : [...prods, json.product];
+          saveProducts(next);
+          return NextResponse.json(json);
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[Products POST] FastAPI forward error, using local fallback:', apiErr);
+    }
+
+    // Local fallback creation
+    const products = getStoredProducts();
     const id = body.id || (body.name || 'produit')
       .toLowerCase()
       .normalize('NFD')
@@ -101,14 +173,7 @@ export async function POST(req: NextRequest) {
       order: products.length + 1
     };
 
-    // Save to SQLite
-    try {
-      saveProductToDb(newProduct);
-    } catch (e) {
-      console.warn('SQLite product save error:', e);
-    }
-
-    // Save to products.json if writable
+    try { saveProductToDb(newProduct); } catch {}
     products.push(newProduct);
     saveProducts(products);
 
@@ -118,7 +183,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT: Update existing product (or upsert if added locally)
+// PUT: Update existing product (Forward to FastAPI + local backup)
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -126,6 +191,39 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'ID produit requis' }, { status: 400 });
     }
 
+    const authHeader = req.headers.get('authorization');
+
+    // Forward to FastAPI backend
+    try {
+      const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/products`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authHeader ? { 'authorization': authHeader } : {})
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (apiRes.status === 401 || apiRes.status === 403) {
+        const errJson = await apiRes.json().catch(() => ({}));
+        return NextResponse.json(errJson, { status: apiRes.status });
+      }
+
+      if (apiRes.ok) {
+        const json = await apiRes.json();
+        if (json.success && json.product) {
+          try { saveProductToDb(json.product); } catch {}
+          const prods = getStoredProducts();
+          const next = prods.map(p => p.id === json.product.id ? json.product : p);
+          saveProducts(next);
+          return NextResponse.json(json);
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[Products PUT] FastAPI forward error, using local fallback:', apiErr);
+    }
+
+    // Local fallback update
     const products = getStoredProducts();
     const index = products.findIndex(p => p.id === body.id);
     const current: Partial<Product> = index !== -1 ? products[index] : {};
@@ -154,14 +252,7 @@ export async function PUT(req: NextRequest) {
       order: current.order || (products.length + 1)
     };
 
-    // Save to SQLite (upsert)
-    try {
-      saveProductToDb(updatedProduct);
-    } catch (e) {
-      console.warn('SQLite product update error:', e);
-    }
-
-    // Save to products.json if writable
+    try { saveProductToDb(updatedProduct); } catch {}
     if (index !== -1) {
       products[index] = updatedProduct;
     } else {
@@ -171,12 +262,11 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ success: true, product: updatedProduct });
   } catch (error) {
-    console.error('Error updating product:', error);
     return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
   }
 }
 
-// DELETE: Delete product
+// DELETE: Delete product (Forward to FastAPI + local backup)
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -186,22 +276,38 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID produit requis' }, { status: 400 });
     }
 
-    let products = getStoredProducts();
-    const initialLength = products.length;
-    const exists = products.some(p => p.id === id);
+    const authHeader = req.headers.get('authorization');
 
-    const deletedFromDb = (() => {
-      try {
-        return deleteProductFromDb(id);
-      } catch (e) {
-        console.warn('SQLite product delete error:', e);
-        return false;
+    // Forward to FastAPI backend
+    try {
+      const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/products?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: authHeader ? { 'authorization': authHeader } : {}
+      });
+
+      if (apiRes.status === 401 || apiRes.status === 403) {
+        const errJson = await apiRes.json().catch(() => ({}));
+        return NextResponse.json(errJson, { status: apiRes.status });
       }
-    })();
 
+      if (apiRes.ok) {
+        try { deleteProductFromDb(id); } catch {}
+        let products = getStoredProducts();
+        products = products.filter(p => p.id !== id);
+        saveProducts(products);
+        return NextResponse.json({ success: true, deletedId: id });
+      }
+    } catch (apiErr) {
+      console.warn('[Products DELETE] FastAPI forward error, using local fallback:', apiErr);
+    }
+
+    // Local fallback deletion
+    let products = getStoredProducts();
+    const exists = products.some(p => p.id === id);
+    try { deleteProductFromDb(id); } catch {}
     products = products.filter(p => p.id !== id);
 
-    if (!exists && !deletedFromDb && products.length === initialLength) {
+    if (!exists) {
       return NextResponse.json({ error: 'Produit non trouvé' }, { status: 404 });
     }
 

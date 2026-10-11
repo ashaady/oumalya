@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { saveImageToDb } from '@/lib/db';
+import { FASTAPI_BASE_URL } from '@/lib/fastapi';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,15 +13,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Aucun fichier reçu' }, { status: 400 });
     }
 
+    const authHeader = req.headers.get('authorization');
+
+    // 1. Forward directly to FastAPI Cloud (which uploads to Supabase CDN bucket)
+    try {
+      const forwardData = new FormData();
+      forwardData.append('file', file);
+
+      const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/upload`, {
+        method: 'POST',
+        headers: {
+          ...(authHeader ? { 'authorization': authHeader } : {})
+        },
+        body: forwardData
+      });
+
+      if (apiRes.status === 401 || apiRes.status === 403) {
+        const errJson = await apiRes.json().catch(() => ({}));
+        return NextResponse.json(errJson, { status: apiRes.status });
+      }
+
+      if (apiRes.ok) {
+        const json = await apiRes.json();
+        if (json.success && json.url) {
+          return NextResponse.json(json);
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[Upload POST] FastAPI forward error, using local fallback:', apiErr);
+    }
+
+    // 2. Local fallback: Save into SQLite Database
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const originalName = file.name || 'image.jpg';
     const mimeType = file.type || 'image/jpeg';
 
-    // 1. Save directly into SQLite Database (persistent binary storage)
     const imageMeta = saveImageToDb(originalName, mimeType, buffer);
 
-    // 2. Also keep a disk file copy as fast static fallback
     try {
       const uploadDir = path.join(process.cwd(), 'public', 'images', 'uploads');
       if (!fs.existsSync(uploadDir)) {
@@ -41,7 +71,7 @@ export async function POST(req: NextRequest) {
       sqlite: true
     });
   } catch (error) {
-    console.error('Upload SQLite error:', error);
-    return NextResponse.json({ error: 'Erreur lors de l\'enregistrement dans la base de données' }, { status: 500 });
+    console.error('Upload error:', error);
+    return NextResponse.json({ error: 'Erreur lors du traitement de l\'image' }, { status: 500 });
   }
 }
