@@ -9,10 +9,12 @@ try:
     from database import get_db
     from models import Category, AdminUser
     from auth import get_current_admin
+    import catalog_sync
 except ImportError:
     from backend.database import get_db
     from backend.models import Category, AdminUser
     from backend.auth import get_current_admin
+    from backend import catalog_sync
 
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
 
@@ -81,6 +83,7 @@ def list_categories(db: Session = Depends(get_db)):
             )
             db.add(cat_obj)
         db.commit()
+        catalog_sync.sync_db_to_supabase(db)
         cats = db.query(Category).order_by(Category.order_num.asc()).all()
 
     return [format_category_dict(c) for c in cats]
@@ -132,6 +135,7 @@ def create_category(
     db.add(new_cat)
     db.commit()
     db.refresh(new_cat)
+    catalog_sync.sync_db_to_supabase(db)
 
     return {"success": True, "category": format_category_dict(new_cat)}
 
@@ -151,6 +155,7 @@ def delete_category_by_id(
 
     db.delete(cat)
     db.commit()
+    catalog_sync.sync_db_to_supabase(db)
     return {"success": True, "deletedId": id}
 
 @router.delete("")

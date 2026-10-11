@@ -8,6 +8,7 @@ import {
   deleteCategoryFromDb
 } from '@/lib/db';
 import { FASTAPI_BASE_URL } from '@/lib/fastapi';
+import { getCatalogFromSupabase, saveCatalogToSupabase } from '@/lib/catalog-sync';
 
 const categoriesFilePath = path.join(process.cwd(), 'data', 'categories.json');
 
@@ -47,7 +48,7 @@ function saveCategoriesToFile(cats: CategoryItem[]): boolean {
   }
 }
 
-// GET: All categories (Proxy to FastAPI with local fallback)
+// GET: All categories (Proxy to FastAPI with Supabase/local fallback)
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
 
@@ -70,7 +71,18 @@ export async function GET(req: NextRequest) {
       }
     }
   } catch (err) {
-    console.warn('[Categories GET] FastAPI backend unreachable, using local store:', err);
+    console.warn('[Categories GET] FastAPI backend unreachable, trying Supabase fallback:', err);
+  }
+
+  // Fallback to Supabase Cloud Storage (persistent across all redeployments)
+  try {
+    const cloudCatalog = await getCatalogFromSupabase();
+    if (cloudCatalog && Array.isArray(cloudCatalog.categories) && cloudCatalog.categories.length > 0) {
+      saveCategoriesToFile(cloudCatalog.categories);
+      return NextResponse.json(cloudCatalog.categories);
+    }
+  } catch (cloudErr) {
+    console.warn('[Categories GET] Supabase CDN fallback error:', cloudErr);
   }
 
   const cats = getStoredCategories();
@@ -111,6 +123,7 @@ export async function POST(req: NextRequest) {
           const idx = all.findIndex(c => c.id === json.category.id);
           const next = idx !== -1 ? all.map(c => c.id === json.category.id ? json.category : c) : [...all, json.category];
           saveCategoriesToFile(next);
+          saveCatalogToSupabase(undefined, next).catch(() => {});
           return NextResponse.json(json);
         }
       }
@@ -153,6 +166,7 @@ export async function POST(req: NextRequest) {
       all.push(newCategory);
     }
     saveCategoriesToFile(all);
+    saveCatalogToSupabase(undefined, all).catch(() => {});
 
     return NextResponse.json({ success: true, category: newCategory });
   } catch (error) {
@@ -193,6 +207,7 @@ export async function DELETE(req: NextRequest) {
         let all = getStoredCategories();
         all = all.filter(c => c.id !== id);
         saveCategoriesToFile(all);
+        saveCatalogToSupabase(undefined, all).catch(() => {});
         return NextResponse.json({ success: true, deletedId: id });
       }
     } catch (apiErr) {
@@ -204,6 +219,7 @@ export async function DELETE(req: NextRequest) {
     let all = getStoredCategories();
     all = all.filter(c => c.id !== id);
     saveCategoriesToFile(all);
+    saveCatalogToSupabase(undefined, all).catch(() => {});
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (error) {

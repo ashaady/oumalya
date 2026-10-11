@@ -17,10 +17,12 @@ try:
     from database import Base, engine, SessionLocal
     from models import Product, Category, Order, Setting, AdminUser
     from routers import products, categories, orders, upload, settings, admin
+    import catalog_sync
 except ImportError:
     from backend.database import Base, engine, SessionLocal
     from backend.models import Product, Category, Order, Setting, AdminUser
     from backend.routers import products, categories, orders, upload, settings, admin
+    from backend import catalog_sync
 
 # Initialize DB tables on startup
 @asynccontextmanager
@@ -28,56 +30,63 @@ async def lifespan(app: FastAPI):
     # Ensure database schema is created
     Base.metadata.create_all(bind=engine)
 
-    # Seed data if empty
+    # Seed or restore catalog data
     db = SessionLocal()
     try:
-        # Check products - only seed once on very first launch
-        seeded_flag = db.query(Setting).filter(Setting.key == "catalog_seeded").first()
-        if not seeded_flag:
-            prod_count = db.query(Product).count()
-            if prod_count == 0:
-                for item in products.DEFAULT_PRODUCTS:
-                    new_p = Product(
-                        id=item["id"],
-                        name=item["name"],
-                        cat=item["cat"],
-                        category=item["category"],
-                        label=item["label"],
-                        catLabel=item["catLabel"],
-                        price=item["price"],
-                        color=item["color"],
-                        sizes=json.dumps(item["sizes"]),
-                        desc=item["desc"],
-                        description=item["description"],
-                        detail=item["detail"],
-                        badges=item["badges"],
-                        badge=item["badge"],
-                        img=item["img"],
-                        image=item["image"],
-                        order_num=item["order"],
-                        created_at="1728000000"
-                    )
-                    db.add(new_p)
-            db.merge(Setting(key="catalog_seeded", value="true"))
-            db.commit()
+        # 1. Restore persistent catalog from Supabase Storage across container redeployments
+        restored = catalog_sync.restore_supabase_to_db(db)
+        if restored:
+            print("[Lifespan] Catalogue synchronisé avec succès depuis Supabase Cloud Storage.")
+        else:
+            # 2. If Supabase has no saved catalog, check if SQLite is empty and seed defaults
+            seeded_flag = db.query(Setting).filter(Setting.key == "catalog_seeded").first()
+            if not seeded_flag:
+                prod_count = db.query(Product).count()
+                if prod_count == 0:
+                    for item in products.DEFAULT_PRODUCTS:
+                        new_p = Product(
+                            id=item["id"],
+                            name=item["name"],
+                            cat=item["cat"],
+                            category=item["category"],
+                            label=item["label"],
+                            catLabel=item["catLabel"],
+                            price=item["price"],
+                            color=item["color"],
+                            sizes=json.dumps(item["sizes"]),
+                            desc=item["desc"],
+                            description=item["description"],
+                            detail=item["detail"],
+                            badges=item["badges"],
+                            badge=item["badge"],
+                            img=item["img"],
+                            image=item["image"],
+                            order_num=item["order"],
+                            created_at="1728000000"
+                        )
+                        db.add(new_p)
 
-        # Check categories
-        cat_count = db.query(Category).count()
-        if cat_count == 0:
-            for idx, item in enumerate(categories.DEFAULT_CATEGORIES):
-                new_c = Category(
-                    id=item["id"],
-                    name=item["name"],
-                    label=item["label"],
-                    icon=item["icon"],
-                    image=item["image"],
-                    default_sizes=json.dumps(item["defaultSizes"]),
-                    is_default=1 if item["isDefault"] else 0,
-                    order_num=idx + 1,
-                    created_at="1728000000"
-                )
-                db.add(new_c)
-            db.commit()
+                cat_count = db.query(Category).count()
+                if cat_count == 0:
+                    for idx, item in enumerate(categories.DEFAULT_CATEGORIES):
+                        new_c = Category(
+                            id=item["id"],
+                            name=item["name"],
+                            label=item["label"],
+                            icon=item["icon"],
+                            image=item["image"],
+                            default_sizes=json.dumps(item["defaultSizes"]),
+                            is_default=1 if item["isDefault"] else 0,
+                            order_num=idx + 1,
+                            created_at="1728000000"
+                        )
+                        db.add(new_c)
+
+                db.merge(Setting(key="catalog_seeded", value="true"))
+                db.commit()
+
+                # Sync initial catalog to Supabase so it's permanently stored for future redeployments
+                catalog_sync.sync_db_to_supabase(db)
 
         # Check orders from data/orders.json if present
         order_count = db.query(Order).count()

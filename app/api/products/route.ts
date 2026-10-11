@@ -10,6 +10,7 @@ import {
   isDbInitialized
 } from '@/lib/db';
 import { FASTAPI_BASE_URL } from '@/lib/fastapi';
+import { getCatalogFromSupabase, saveCatalogToSupabase } from '@/lib/catalog-sync';
 
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || 'sk_test_REDACTED';
 const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest) {
       resetProductsInDb(DEFAULT_PRODUCTS);
     } catch {}
     saveProducts(DEFAULT_PRODUCTS);
+    saveCatalogToSupabase(DEFAULT_PRODUCTS).catch(() => {});
     return NextResponse.json(DEFAULT_PRODUCTS);
   }
 
@@ -106,10 +108,21 @@ export async function GET(req: NextRequest) {
       }
     }
   } catch (err) {
-    console.warn('[Products GET] FastAPI backend unreachable, using local store:', err);
+    console.warn('[Products GET] FastAPI backend unreachable, trying Supabase fallback:', err);
   }
 
-  // 3. Fallback to local storage
+  // 3. Fallback to Supabase Cloud CDN storage (persistent across all redeployments)
+  try {
+    const cloudCatalog = await getCatalogFromSupabase();
+    if (cloudCatalog && Array.isArray(cloudCatalog.products) && (cloudCatalog.products.length > 0 || cloudCatalog.initialized)) {
+      saveProducts(cloudCatalog.products);
+      return NextResponse.json(cloudCatalog.products);
+    }
+  } catch (cloudErr) {
+    console.warn('[Products GET] Supabase CDN fallback error:', cloudErr);
+  }
+
+  // 4. Fallback to local storage
   const products = getStoredProducts();
   return NextResponse.json(products);
 }
@@ -145,6 +158,7 @@ export async function POST(req: NextRequest) {
           const exists = prods.some(p => p.id === json.product.id);
           const next = exists ? prods.map(p => p.id === json.product.id ? json.product : p) : [...prods, json.product];
           saveProducts(next);
+          saveCatalogToSupabase(next).catch(() => {});
           return NextResponse.json(json);
         }
       }
@@ -187,6 +201,7 @@ export async function POST(req: NextRequest) {
     try { saveProductToDb(newProduct); } catch {}
     products.push(newProduct);
     saveProducts(products);
+    saveCatalogToSupabase(products).catch(() => {});
 
     return NextResponse.json({ success: true, product: newProduct });
   } catch (error) {
@@ -228,6 +243,7 @@ export async function PUT(req: NextRequest) {
           const prods = getStoredProducts();
           const next = prods.map(p => p.id === json.product.id ? json.product : p);
           saveProducts(next);
+          saveCatalogToSupabase(next).catch(() => {});
           return NextResponse.json(json);
         }
       }
@@ -271,6 +287,7 @@ export async function PUT(req: NextRequest) {
       products.push(updatedProduct);
     }
     saveProducts(products);
+    saveCatalogToSupabase(products).catch(() => {});
 
     return NextResponse.json({ success: true, product: updatedProduct });
   } catch (error) {
@@ -319,6 +336,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     saveProducts(products);
+    saveCatalogToSupabase(products).catch(() => {});
     return NextResponse.json({ success: true, deletedId: id, fastApiSynced: fastApiDeleted });
   } catch (error) {
     return NextResponse.json({ error: 'Erreur lors de la suppression' }, { status: 500 });

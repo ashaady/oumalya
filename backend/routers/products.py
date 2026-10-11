@@ -9,10 +9,12 @@ try:
     from database import get_db
     from models import Product, AdminUser
     from auth import get_current_admin
+    import catalog_sync
 except ImportError:
     from backend.database import get_db
     from backend.models import Product, AdminUser
     from backend.auth import get_current_admin
+    from backend import catalog_sync
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
@@ -163,6 +165,7 @@ def list_products(
             )
             db.add(new_p)
         db.commit()
+        catalog_sync.sync_db_to_supabase(db)
 
     query = db.query(Product)
     if cat and cat != "all":
@@ -240,6 +243,7 @@ def create_product(
 
     merged_prod = db.merge(new_prod)
     db.commit()
+    catalog_sync.sync_db_to_supabase(db)
 
     return {"success": True, "product": format_product_dict(merged_prod)}
 
@@ -290,6 +294,7 @@ def update_product_by_id(
 
     db.commit()
     db.refresh(prod)
+    catalog_sync.sync_db_to_supabase(db)
     return {"success": True, "product": format_product_dict(prod)}
 
 @router.put("")
@@ -317,6 +322,7 @@ def delete_product_by_id(
 
     db.delete(prod)
     db.commit()
+    catalog_sync.sync_db_to_supabase(db)
     return {"success": True, "deletedId": id}
 
 @router.delete("")
