@@ -50,10 +50,10 @@ type TabKey = 'dashboard' | 'products' | 'orders' | 'settings';
 const clerkOumalyaAppearance = {
   variables: {
     colorPrimary: '#eb5c8e',
-    colorBackground: '#131117',
+    colorBackground: '#16141f',
     colorText: '#ffffff',
-    colorTextSecondary: '#a5a5b2',
-    colorInputBackground: '#1c1a24',
+    colorTextSecondary: '#dedde8',
+    colorInputBackground: '#201d2a',
     colorInputText: '#ffffff',
     colorTextOnPrimaryBackground: '#ffffff',
     colorDanger: '#ff4d6d',
@@ -67,36 +67,35 @@ const clerkOumalyaAppearance = {
       maxWidth: '440px',
     },
     card: {
-      background: 'linear-gradient(165deg, rgba(23, 21, 28, 0.96) 0%, rgba(14, 13, 18, 0.98) 100%)',
-      border: '1px solid rgba(235, 92, 142, 0.25)',
-      boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(235, 92, 142, 0.15)',
-      borderRadius: '22px',
+      background: '#16141f',
+      border: '1px solid rgba(235, 92, 142, 0.35)',
+      boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(235, 92, 142, 0.12)',
+      borderRadius: '20px',
       padding: '36px 30px',
-      backdropFilter: 'blur(20px)',
     },
     headerTitle: {
       fontFamily: "'Playfair Display', Georgia, serif",
       fontSize: '25px',
-      fontWeight: '600',
+      fontWeight: '700',
       color: '#ffffff',
-      letterSpacing: '-0.01em',
+      letterSpacing: '0.01em',
     },
     headerSubtitle: {
-      color: '#9e9ea8',
-      fontSize: '13.5px',
+      color: '#dedde8',
+      fontSize: '14px',
       marginTop: '6px',
     },
     socialButtonsBlockButton: {
-      background: 'rgba(255, 255, 255, 0.05)',
-      border: '1px solid rgba(255, 255, 255, 0.15)',
+      background: '#23202e',
+      border: '1px solid #433d56',
       color: '#ffffff',
       borderRadius: '12px',
-      height: '46px',
+      height: '48px',
     },
     socialButtonsBlockButtonText: {
       color: '#ffffff',
-      fontWeight: '500',
-      fontSize: '14px',
+      fontWeight: '600',
+      fontSize: '14.5px',
     },
     formButtonPrimary: {
       background: 'linear-gradient(135deg, #eb5c8e 0%, #d8487d 100%)',
@@ -108,42 +107,42 @@ const clerkOumalyaAppearance = {
       height: '46px',
       boxShadow: '0 6px 20px rgba(235, 92, 142, 0.35)',
     },
-    footerActionLink: {
-      color: '#eb5c8e',
-      fontWeight: '600',
+    footer: {
+      display: 'none !important',
+    },
+    footerAction: {
+      display: 'none !important',
     },
     footerActionText: {
-      color: '#8e8e99',
-      fontSize: '13px',
+      display: 'none !important',
+    },
+    footerActionLink: {
+      display: 'none !important',
+    },
+    footerPages: {
+      display: 'none !important',
+    },
+    devModeBadge: {
+      display: 'none !important',
     },
     formFieldLabel: {
-      color: '#d8d8e2',
-      fontSize: '12.5px',
+      color: '#ffffff',
+      fontSize: '13px',
+      fontWeight: '500',
     },
     formFieldInput: {
-      background: 'rgba(255, 255, 255, 0.04)',
-      border: '1px solid rgba(255, 255, 255, 0.14)',
+      background: '#201d2a',
+      border: '1px solid #433d56',
       borderRadius: '10px',
       color: '#ffffff',
       fontSize: '14px',
-      height: '42px',
+      height: '44px',
     },
     dividerLine: {
-      background: 'linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.35), transparent)',
+      background: 'linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.45), transparent)',
     },
     dividerText: {
-      color: '#8b8b96',
-    },
-    footer: {
-      background: 'transparent',
-    },
-    identityPreview: {
-      background: 'rgba(255, 255, 255, 0.04)',
-      border: '1px solid rgba(255, 255, 255, 0.12)',
-      borderRadius: '10px',
-    },
-    identityPreviewText: {
-      color: '#ffffff',
+      color: '#a5a4b5',
     },
   },
 };
@@ -849,70 +848,40 @@ export default function AdminPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'radial-gradient(ellipse at 50% 12%, rgba(235, 92, 142, 0.16) 0%, rgba(18, 16, 23, 0.96) 50%, #0a090d 100%)',
+        background: '#0d0d12',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '36px 20px',
-        color: '#fff',
-        fontFamily: "'DM Sans', sans-serif",
-        position: 'relative',
-        overflow: 'hidden'
+        color: '#ffffff',
+        fontFamily: "'DM Sans', sans-serif"
       }}>
-        {/* Ambient Glows */}
-        <div style={{
-          position: 'absolute',
-          top: '6%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '520px',
-          height: '520px',
-          background: 'radial-gradient(circle, rgba(235, 92, 142, 0.15) 0%, transparent 68%)',
-          filter: 'blur(60px)',
-          pointerEvents: 'none',
-          zIndex: 0
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '8%',
-          right: '12%',
-          width: '360px',
-          height: '360px',
-          background: 'radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%)',
-          filter: 'blur(80px)',
-          pointerEvents: 'none',
-          zIndex: 0
-        }} />
-
         {/* Brand Header */}
         <div style={{
-          maxWidth: '480px',
+          maxWidth: '460px',
           width: '100%',
           textAlign: 'center',
-          marginBottom: '26px',
-          position: 'relative',
-          zIndex: 1
+          marginBottom: '26px'
         }}>
           <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
             <h1 style={{
               fontFamily: "'Playfair Display', Georgia, serif",
               fontSize: '38px',
-              letterSpacing: '0.18em',
-              background: 'linear-gradient(135deg, #ffffff 0%, #faedef 35%, #eb5c8e 75%, #d4af37 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              letterSpacing: '0.15em',
+              color: '#f0c868',
               margin: '0 0 6px 0',
-              fontWeight: 700
+              fontWeight: 700,
+              textShadow: '0 2px 12px rgba(0,0,0,0.7)'
             }}>
               OUMALYA
             </h1>
           </Link>
 
           <div style={{
-            fontSize: '9.5px',
+            fontSize: '10.5px',
             fontWeight: 700,
-            letterSpacing: '0.35em',
+            letterSpacing: '0.28em',
             color: '#d4af37',
             textTransform: 'uppercase',
             marginBottom: '14px'
@@ -924,19 +893,19 @@ export default function AdminPage() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            fontSize: '11px',
+            fontSize: '11.5px',
             textTransform: 'uppercase',
-            letterSpacing: '0.14em',
-            color: '#faedef',
-            background: 'rgba(235, 92, 142, 0.1)',
-            border: '1px solid rgba(235, 92, 142, 0.35)',
-            padding: '6px 16px',
+            letterSpacing: '0.12em',
+            color: '#ffffff',
+            background: '#1a1824',
+            border: '1px solid #eb5c8e',
+            padding: '7px 18px',
             borderRadius: '999px',
-            boxShadow: '0 4px 15px rgba(235, 92, 142, 0.15)'
+            boxShadow: '0 4px 15px rgba(235, 92, 142, 0.2)'
           }}>
             <span style={{
-              width: '6px',
-              height: '6px',
+              width: '7px',
+              height: '7px',
               borderRadius: '50%',
               background: '#eb5c8e',
               boxShadow: '0 0 8px #eb5c8e'
@@ -945,12 +914,13 @@ export default function AdminPage() {
           </div>
 
           <p style={{
-            color: '#9e9ea8',
-            fontSize: '13px',
+            color: '#f0eff7',
+            fontSize: '14px',
             marginTop: '14px',
-            lineHeight: 1.55,
-            maxWidth: '420px',
-            marginInline: 'auto'
+            lineHeight: 1.6,
+            maxWidth: '430px',
+            marginInline: 'auto',
+            fontWeight: 400
           }}>
             Connexion réservée aux administrateurs autorisés de la boutique Oumalya. Authentifiez-vous pour gérer le catalogue, les stocks et les commandes.
           </p>
@@ -958,12 +928,10 @@ export default function AdminPage() {
 
         {/* Clerk Sign In Box */}
         <div style={{
-          position: 'relative',
-          zIndex: 1,
           display: 'flex',
           justifyContent: 'center',
           width: '100%',
-          maxWidth: '480px'
+          maxWidth: '440px'
         }}>
           <SignIn
             routing="hash"
@@ -971,42 +939,32 @@ export default function AdminPage() {
           />
         </div>
 
-        {/* Return Button & Footer */}
+        {/* Return Button */}
         <div style={{
           marginTop: '28px',
-          textAlign: 'center',
-          position: 'relative',
-          zIndex: 1
+          textAlign: 'center'
         }}>
           <Link
             href="/"
             style={{
-              color: '#d0d0d8',
-              fontSize: '13px',
+              color: '#ffffff',
+              fontSize: '13.5px',
+              fontWeight: 500,
               textDecoration: 'none',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '9px 20px',
+              padding: '10px 22px',
               borderRadius: '100px',
-              border: '1px solid rgba(235, 92, 142, 0.25)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              backdropFilter: 'blur(10px)',
-              transition: 'all 0.25s ease'
+              border: '1px solid #eb5c8e',
+              background: '#181622',
+              transition: 'all 0.25s ease',
+              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)'
             }}
           >
             <span>←</span>
             <span>Retour à la boutique publique</span>
           </Link>
-
-          <div style={{
-            marginTop: '14px',
-            fontSize: '11px',
-            color: '#6e6e78',
-            letterSpacing: '0.04em'
-          }}>
-            🔒 Protégé par Clerk · Whitelist maximale : 2 administrateurs autorisés
-          </div>
         </div>
 
         {/* Specific Inline CSS for Clerk elements */}
@@ -1016,60 +974,58 @@ export default function AdminPage() {
             max-width: 440px !important;
           }
           .cl-card {
-            background: linear-gradient(165deg, rgba(23, 21, 28, 0.96) 0%, rgba(14, 13, 18, 0.98) 100%) !important;
-            border: 1px solid rgba(235, 92, 142, 0.25) !important;
-            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(235, 92, 142, 0.15) !important;
-            border-radius: 22px !important;
+            background: #16141f !important;
+            border: 1px solid rgba(235, 92, 142, 0.4) !important;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 35px rgba(235, 92, 142, 0.12) !important;
+            border-radius: 20px !important;
             padding: 34px 28px !important;
-            backdrop-filter: blur(20px) !important;
             color: #ffffff !important;
           }
           .cl-headerTitle {
             font-family: 'Playfair Display', Georgia, serif !important;
             color: #ffffff !important;
             font-size: 25px !important;
-            font-weight: 600 !important;
+            fontWeight: 700 !important;
           }
           .cl-headerSubtitle {
-            color: #9e9ea8 !important;
-            font-size: 13.5px !important;
+            color: #d6d5e2 !important;
+            font-size: 14px !important;
+            font-weight: 400 !important;
           }
           .cl-socialButtonsBlockButton {
-            background: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            background: #23202e !important;
+            border: 1px solid #433d56 !important;
             color: #ffffff !important;
             border-radius: 12px !important;
-            height: 46px !important;
-            transition: all 0.25s ease !important;
+            height: 48px !important;
+            transition: all 0.2s ease !important;
           }
           .cl-socialButtonsBlockButton:hover {
-            background: rgba(235, 92, 142, 0.14) !important;
-            border-color: rgba(235, 92, 142, 0.45) !important;
+            background: #2d283c !important;
+            border-color: #eb5c8e !important;
             transform: translateY(-1px) !important;
           }
           .cl-socialButtonsBlockButtonText {
             color: #ffffff !important;
-            font-weight: 500 !important;
-            font-size: 14px !important;
+            font-weight: 600 !important;
+            font-size: 14.5px !important;
           }
           .cl-formFieldLabel {
-            color: #d8d8e2 !important;
+            color: #ffffff !important;
             font-size: 13px !important;
             font-weight: 500 !important;
           }
           .cl-formFieldInput {
-            background: rgba(255, 255, 255, 0.04) !important;
-            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            background: #201d2a !important;
+            border: 1px solid #433d56 !important;
             color: #ffffff !important;
             border-radius: 10px !important;
             font-size: 14px !important;
-            height: 42px !important;
-            transition: all 0.2s ease !important;
+            height: 44px !important;
           }
           .cl-formFieldInput:focus {
             border-color: #eb5c8e !important;
             box-shadow: 0 0 0 3px rgba(235, 92, 142, 0.25) !important;
-            background: rgba(255, 255, 255, 0.07) !important;
           }
           .cl-formButtonPrimary {
             background: linear-gradient(135deg, #eb5c8e 0%, #d8487d 100%) !important;
@@ -1080,38 +1036,45 @@ export default function AdminPage() {
             height: 46px !important;
             font-size: 14px !important;
             box-shadow: 0 6px 20px rgba(235, 92, 142, 0.35) !important;
-            transition: all 0.2s ease !important;
           }
           .cl-formButtonPrimary:hover {
             background: linear-gradient(135deg, #f06999 0%, #e05286 100%) !important;
             box-shadow: 0 8px 26px rgba(235, 92, 142, 0.5) !important;
             transform: translateY(-1px) !important;
           }
-          .cl-footerActionLink {
-            color: #eb5c8e !important;
-            font-weight: 600 !important;
-          }
-          .cl-footerActionLink:hover {
-            color: #f27da6 !important;
-          }
-          .cl-footerActionText {
-            color: #8e8e99 !important;
-          }
           .cl-dividerLine {
-            background: linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.35), transparent) !important;
+            background: linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.45), transparent) !important;
           }
           .cl-dividerText {
-            color: #8b8b96 !important;
-            font-size: 11px !important;
+            color: #a5a4b5 !important;
+            font-size: 11.5px !important;
             letter-spacing: 0.1em !important;
           }
-          .cl-footer {
-            background: transparent !important;
-          }
-          .cl-devModeBadge, .cl-internal-b3fm6y, .cl-internal-1dauvpw {
-            background: rgba(235, 92, 142, 0.1) !important;
-            border: 1px solid rgba(235, 92, 142, 0.3) !important;
-            color: #eb5c8e !important;
+
+          /* COMPLETELY HIDE: Footer, Sign up link, Secured by clerk, Development mode */
+          .cl-footer,
+          .cl-footerAction,
+          .cl-footerActionText,
+          .cl-footerActionLink,
+          .cl-footerPages,
+          .cl-footerPagesLink,
+          .cl-devModeBadge,
+          .cl-internal-b3fm6y,
+          .cl-internal-1dauvpw,
+          .cl-internal-1502444,
+          [class*="footerAction"],
+          [class*="footerPages"],
+          [class*="devModeBadge"],
+          [class*="developmentMode"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            max-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            overflow: hidden !important;
           }
         `}</style>
       </div>

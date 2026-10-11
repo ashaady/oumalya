@@ -59,13 +59,22 @@ const clerkOumalyaAppearance = {
       border: 'none',
       color: '#ffffff',
     },
-    footerActionLink: {
-      color: '#eb5c8e',
-    },
     formFieldInput: {
       background: 'rgba(255, 255, 255, 0.04)',
       border: '1px solid rgba(255, 255, 255, 0.14)',
       color: '#ffffff',
+    },
+    footer: {
+      display: 'none !important',
+    },
+    footerAction: {
+      display: 'none !important',
+    },
+    footerPages: {
+      display: 'none !important',
+    },
+    devModeBadge: {
+      display: 'none !important',
     },
     userButtonPopoverCard: {
       background: '#141318',

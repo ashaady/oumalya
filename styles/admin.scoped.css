@@ -1282,36 +1282,72 @@
   transform: translateY(-1px) !important;
 }
 
-.cl-footerActionLink {
-  color: #eb5c8e !important;
+.cl-headerSubtitle {
+  color: #d6d5e2 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+.cl-socialButtonsBlockButton {
+  background: #23202e !important;
+  border: 1px solid #433d56 !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  transition: all 0.25s ease !important;
+  height: 48px !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background: #2e2a3c !important;
+  border-color: #eb5c8e !important;
+  transform: translateY(-1px) !important;
+}
+
+.cl-socialButtonsBlockButtonText {
+  color: #ffffff !important;
   font-weight: 600 !important;
-}
-
-.cl-footerActionLink:hover {
-  color: #f27da6 !important;
-}
-
-.cl-footerActionText {
-  color: #8e8e99 !important;
+  font-size: 14.5px !important;
 }
 
 .cl-dividerLine {
-  background: linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.35), transparent) !important;
+  background: linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.45), transparent) !important;
 }
 
 .cl-dividerText {
-  color: #8b8b96 !important;
-  font-size: 11px !important;
+  color: #a5a4b5 !important;
+  font-size: 11.5px !important;
   letter-spacing: 0.1em !important;
 }
 
-.cl-footer {
-  background: transparent !important;
+/* Completely hide Clerk Footer, Sign Up prompt, Dev Mode badge and watermark */
+.cl-footer,
+.cl-footerAction,
+.cl-footerActionText,
+.cl-footerActionLink,
+.cl-footerPages,
+.cl-footerPagesLink,
+.cl-devModeBadge,
+.cl-internal-b3fm6y,
+.cl-internal-1dauvpw,
+.cl-internal-1502444,
+[class*="footerAction"],
+[class*="footerPages"],
+[class*="devModeBadge"],
+[class*="developmentMode"] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
 }
 
 .cl-identityPreview {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 10px !important;
 }
 
@@ -1335,9 +1371,4 @@
   color: #eb5c8e !important;
 }
 
-.cl-devModeBadge, .cl-internal-b3fm6y, .cl-internal-1dauvpw {
-  background: rgba(235, 92, 142, 0.1) !important;
-  border: 1px solid rgba(235, 92, 142, 0.3) !important;
-  color: #eb5c8e !important;
-}
 
