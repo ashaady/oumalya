@@ -1190,3 +1190,154 @@
   border-top: 1px solid var(--stroke-light);
   text-align: center;
 }
+
+/* ==================== CLERK OUMALYA LUXURY THEME ==================== */
+.cl-rootBox {
+  width: 100% !important;
+  max-width: 440px !important;
+  margin: 0 auto !important;
+}
+
+.cl-card {
+  background: linear-gradient(165deg, rgba(23, 21, 28, 0.96) 0%, rgba(14, 13, 18, 0.98) 100%) !important;
+  border: 1px solid rgba(235, 92, 142, 0.25) !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(235, 92, 142, 0.15) !important;
+  border-radius: 22px !important;
+  padding: 36px 30px !important;
+  backdrop-filter: blur(20px) !important;
+  color: #ffffff !important;
+}
+
+.cl-headerTitle {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  color: #ffffff !important;
+  font-size: 26px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.cl-headerSubtitle {
+  color: #9e9ea8 !important;
+  font-size: 13.5px !important;
+}
+
+.cl-socialButtonsBlockButton {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  transition: all 0.25s ease !important;
+  height: 46px !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background: rgba(235, 92, 142, 0.14) !important;
+  border-color: rgba(235, 92, 142, 0.45) !important;
+  transform: translateY(-1px) !important;
+}
+
+.cl-socialButtonsBlockButtonText {
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+}
+
+.cl-formFieldLabel {
+  color: #d8d8e2 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.cl-formFieldInput {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  height: 42px !important;
+  transition: all 0.2s ease !important;
+}
+
+.cl-formFieldInput:focus {
+  border-color: #eb5c8e !important;
+  box-shadow: 0 0 0 3px rgba(235, 92, 142, 0.25) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+.cl-formButtonPrimary {
+  background: linear-gradient(135deg, #eb5c8e 0%, #d8487d 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-radius: 12px !important;
+  height: 46px !important;
+  font-size: 14px !important;
+  box-shadow: 0 6px 20px rgba(235, 92, 142, 0.35) !important;
+  transition: all 0.2s ease !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background: linear-gradient(135deg, #f06999 0%, #e05286 100%) !important;
+  box-shadow: 0 8px 26px rgba(235, 92, 142, 0.5) !important;
+  transform: translateY(-1px) !important;
+}
+
+.cl-footerActionLink {
+  color: #eb5c8e !important;
+  font-weight: 600 !important;
+}
+
+.cl-footerActionLink:hover {
+  color: #f27da6 !important;
+}
+
+.cl-footerActionText {
+  color: #8e8e99 !important;
+}
+
+.cl-dividerLine {
+  background: linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.35), transparent) !important;
+}
+
+.cl-dividerText {
+  color: #8b8b96 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.1em !important;
+}
+
+.cl-footer {
+  background: transparent !important;
+}
+
+.cl-identityPreview {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+}
+
+.cl-identityPreviewText {
+  color: #ffffff !important;
+}
+
+.cl-userButtonPopoverCard {
+  background: #141318 !important;
+  border: 1px solid rgba(235, 92, 142, 0.25) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8) !important;
+  color: #ffffff !important;
+}
+
+.cl-userButtonPopoverActionButton {
+  color: #e5e5ea !important;
+}
+
+.cl-userButtonPopoverActionButton:hover {
+  background: rgba(235, 92, 142, 0.12) !important;
+  color: #eb5c8e !important;
+}
+
+.cl-devModeBadge, .cl-internal-b3fm6y, .cl-internal-1dauvpw {
+  background: rgba(235, 92, 142, 0.1) !important;
+  border: 1px solid rgba(235, 92, 142, 0.3) !important;
+  color: #eb5c8e !important;
+}
+

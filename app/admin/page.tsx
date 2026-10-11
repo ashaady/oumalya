@@ -47,6 +47,107 @@ export interface Order {
 
 type TabKey = 'dashboard' | 'products' | 'orders' | 'settings';
 
+const clerkOumalyaAppearance = {
+  variables: {
+    colorPrimary: '#eb5c8e',
+    colorBackground: '#131117',
+    colorText: '#ffffff',
+    colorTextSecondary: '#a5a5b2',
+    colorInputBackground: '#1c1a24',
+    colorInputText: '#ffffff',
+    colorTextOnPrimaryBackground: '#ffffff',
+    colorDanger: '#ff4d6d',
+    colorSuccess: '#2ec4b6',
+    borderRadius: '14px',
+    fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+  },
+  elements: {
+    rootBox: {
+      width: '100%',
+      maxWidth: '440px',
+    },
+    card: {
+      background: 'linear-gradient(165deg, rgba(23, 21, 28, 0.96) 0%, rgba(14, 13, 18, 0.98) 100%)',
+      border: '1px solid rgba(235, 92, 142, 0.25)',
+      boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(235, 92, 142, 0.15)',
+      borderRadius: '22px',
+      padding: '36px 30px',
+      backdropFilter: 'blur(20px)',
+    },
+    headerTitle: {
+      fontFamily: "'Playfair Display', Georgia, serif",
+      fontSize: '25px',
+      fontWeight: '600',
+      color: '#ffffff',
+      letterSpacing: '-0.01em',
+    },
+    headerSubtitle: {
+      color: '#9e9ea8',
+      fontSize: '13.5px',
+      marginTop: '6px',
+    },
+    socialButtonsBlockButton: {
+      background: 'rgba(255, 255, 255, 0.05)',
+      border: '1px solid rgba(255, 255, 255, 0.15)',
+      color: '#ffffff',
+      borderRadius: '12px',
+      height: '46px',
+    },
+    socialButtonsBlockButtonText: {
+      color: '#ffffff',
+      fontWeight: '500',
+      fontSize: '14px',
+    },
+    formButtonPrimary: {
+      background: 'linear-gradient(135deg, #eb5c8e 0%, #d8487d 100%)',
+      border: 'none',
+      borderRadius: '12px',
+      color: '#ffffff',
+      fontWeight: '600',
+      fontSize: '14px',
+      height: '46px',
+      boxShadow: '0 6px 20px rgba(235, 92, 142, 0.35)',
+    },
+    footerActionLink: {
+      color: '#eb5c8e',
+      fontWeight: '600',
+    },
+    footerActionText: {
+      color: '#8e8e99',
+      fontSize: '13px',
+    },
+    formFieldLabel: {
+      color: '#d8d8e2',
+      fontSize: '12.5px',
+    },
+    formFieldInput: {
+      background: 'rgba(255, 255, 255, 0.04)',
+      border: '1px solid rgba(255, 255, 255, 0.14)',
+      borderRadius: '10px',
+      color: '#ffffff',
+      fontSize: '14px',
+      height: '42px',
+    },
+    dividerLine: {
+      background: 'linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.35), transparent)',
+    },
+    dividerText: {
+      color: '#8b8b96',
+    },
+    footer: {
+      background: 'transparent',
+    },
+    identityPreview: {
+      background: 'rgba(255, 255, 255, 0.04)',
+      border: '1px solid rgba(255, 255, 255, 0.12)',
+      borderRadius: '10px',
+    },
+    identityPreviewText: {
+      color: '#ffffff',
+    },
+  },
+};
+
 export default function AdminPage() {
   const {
     products,
@@ -703,19 +804,40 @@ export default function AdminPage() {
         fontFamily: "'DM Sans', sans-serif"
       }}>
         <div style={{
-          width: '56px',
-          height: '56px',
-          border: '3px solid rgba(212,175,55,0.2)',
-          borderTopColor: '#d4af37',
+          width: '54px',
+          height: '54px',
+          border: '3px solid rgba(235, 92, 142, 0.2)',
+          borderTopColor: '#eb5c8e',
           borderRadius: '50%',
-          animation: 'spin 0.9s linear infinite',
-          marginBottom: '20px'
+          animation: 'spin 0.85s linear infinite',
+          marginBottom: '20px',
+          boxShadow: '0 0 25px rgba(235, 92, 142, 0.25)'
         }} />
-        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', letterSpacing: '0.05em', color: '#d4af37', margin: 0 }}>
-          OUMALYA CLOTHING
+        <h2 style={{
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontSize: '26px',
+          letterSpacing: '0.12em',
+          background: 'linear-gradient(135deg, #ffffff 0%, #faedef 35%, #eb5c8e 75%, #d4af37 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          margin: 0,
+          fontWeight: 700
+        }}>
+          OUMALYA
         </h2>
-        <p style={{ color: '#888', fontSize: '14px', marginTop: '8px' }}>
-          {adminStatus === 'checking' ? 'Vérification des accès administrateur...' : 'Initialisation sécurisée...'}
+        <div style={{
+          fontSize: '9px',
+          fontWeight: 700,
+          letterSpacing: '0.3em',
+          color: '#d4af37',
+          textTransform: 'uppercase',
+          marginTop: '4px',
+          marginBottom: '10px'
+        }}>
+          Maison de Mode · Dakar
+        </div>
+        <p style={{ color: '#9e9ea8', fontSize: '13px', marginTop: '4px' }}>
+          {adminStatus === 'checking' ? 'Vérification des accès administrateur...' : 'Initialisation de l\'espace sécurisé...'}
         </p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -727,78 +849,271 @@ export default function AdminPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0b0b0e 0%, #15151c 100%)',
+        background: 'radial-gradient(ellipse at 50% 12%, rgba(235, 92, 142, 0.16) 0%, rgba(18, 16, 23, 0.96) 50%, #0a090d 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: '36px 20px',
         color: '#fff',
-        fontFamily: "'DM Sans', sans-serif"
+        fontFamily: "'DM Sans', sans-serif",
+        position: 'relative',
+        overflow: 'hidden'
       }}>
+        {/* Ambient Glows */}
         <div style={{
-          maxWidth: '460px',
+          position: 'absolute',
+          top: '6%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '520px',
+          height: '520px',
+          background: 'radial-gradient(circle, rgba(235, 92, 142, 0.15) 0%, transparent 68%)',
+          filter: 'blur(60px)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '8%',
+          right: '12%',
+          width: '360px',
+          height: '360px',
+          background: 'radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%)',
+          filter: 'blur(80px)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }} />
+
+        {/* Brand Header */}
+        <div style={{
+          maxWidth: '480px',
           width: '100%',
           textAlign: 'center',
-          marginBottom: '24px'
+          marginBottom: '26px',
+          position: 'relative',
+          zIndex: 1
         }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
             <h1 style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: '32px',
-              letterSpacing: '0.08em',
-              color: '#d4af37',
-              margin: '0 0 4px 0'
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: '38px',
+              letterSpacing: '0.18em',
+              background: 'linear-gradient(135deg, #ffffff 0%, #faedef 35%, #eb5c8e 75%, #d4af37 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              margin: '0 0 6px 0',
+              fontWeight: 700
             }}>
               OUMALYA
             </h1>
           </Link>
+
           <div style={{
-            display: 'inline-block',
+            fontSize: '9.5px',
+            fontWeight: 700,
+            letterSpacing: '0.35em',
+            color: '#d4af37',
+            textTransform: 'uppercase',
+            marginBottom: '14px'
+          }}>
+            Maison de Mode · Dakar
+          </div>
+
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
             fontSize: '11px',
             textTransform: 'uppercase',
-            letterSpacing: '0.15em',
-            color: '#a0a0a5',
-            border: '1px solid rgba(212,175,55,0.3)',
-            padding: '4px 12px',
+            letterSpacing: '0.14em',
+            color: '#faedef',
+            background: 'rgba(235, 92, 142, 0.1)',
+            border: '1px solid rgba(235, 92, 142, 0.35)',
+            padding: '6px 16px',
             borderRadius: '999px',
-            marginTop: '8px'
+            boxShadow: '0 4px 15px rgba(235, 92, 142, 0.15)'
           }}>
+            <span style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: '#eb5c8e',
+              boxShadow: '0 0 8px #eb5c8e'
+            }} />
             Espace Administration Sécurisé
           </div>
-          <p style={{ color: '#9a9aa2', fontSize: '13px', marginTop: '12px', lineHeight: 1.5 }}>
+
+          <p style={{
+            color: '#9e9ea8',
+            fontSize: '13px',
+            marginTop: '14px',
+            lineHeight: 1.55,
+            maxWidth: '420px',
+            marginInline: 'auto'
+          }}>
             Connexion réservée aux administrateurs autorisés de la boutique Oumalya. Authentifiez-vous pour gérer le catalogue, les stocks et les commandes.
           </p>
         </div>
 
+        {/* Clerk Sign In Box */}
         <div style={{
+          position: 'relative',
+          zIndex: 1,
           display: 'flex',
           justifyContent: 'center',
           width: '100%',
           maxWidth: '480px'
         }}>
-          <SignIn routing="hash" />
+          <SignIn
+            routing="hash"
+            appearance={clerkOumalyaAppearance}
+          />
         </div>
 
-        <div style={{ marginTop: '28px' }}>
+        {/* Return Button & Footer */}
+        <div style={{
+          marginTop: '28px',
+          textAlign: 'center',
+          position: 'relative',
+          zIndex: 1
+        }}>
           <Link
             href="/"
             style={{
-              color: '#a0a0a5',
+              color: '#d0d0d8',
               fontSize: '13px',
               textDecoration: 'none',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(255,255,255,0.03)'
+              gap: '8px',
+              padding: '9px 20px',
+              borderRadius: '100px',
+              border: '1px solid rgba(235, 92, 142, 0.25)',
+              background: 'rgba(255, 255, 255, 0.03)',
+              backdropFilter: 'blur(10px)',
+              transition: 'all 0.25s ease'
             }}
           >
-            ← Retour à la boutique publique
+            <span>←</span>
+            <span>Retour à la boutique publique</span>
           </Link>
+
+          <div style={{
+            marginTop: '14px',
+            fontSize: '11px',
+            color: '#6e6e78',
+            letterSpacing: '0.04em'
+          }}>
+            🔒 Protégé par Clerk · Whitelist maximale : 2 administrateurs autorisés
+          </div>
         </div>
+
+        {/* Specific Inline CSS for Clerk elements */}
+        <style>{`
+          .cl-rootBox {
+            width: 100% !important;
+            max-width: 440px !important;
+          }
+          .cl-card {
+            background: linear-gradient(165deg, rgba(23, 21, 28, 0.96) 0%, rgba(14, 13, 18, 0.98) 100%) !important;
+            border: 1px solid rgba(235, 92, 142, 0.25) !important;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(235, 92, 142, 0.15) !important;
+            border-radius: 22px !important;
+            padding: 34px 28px !important;
+            backdrop-filter: blur(20px) !important;
+            color: #ffffff !important;
+          }
+          .cl-headerTitle {
+            font-family: 'Playfair Display', Georgia, serif !important;
+            color: #ffffff !important;
+            font-size: 25px !important;
+            font-weight: 600 !important;
+          }
+          .cl-headerSubtitle {
+            color: #9e9ea8 !important;
+            font-size: 13.5px !important;
+          }
+          .cl-socialButtonsBlockButton {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+            border-radius: 12px !important;
+            height: 46px !important;
+            transition: all 0.25s ease !important;
+          }
+          .cl-socialButtonsBlockButton:hover {
+            background: rgba(235, 92, 142, 0.14) !important;
+            border-color: rgba(235, 92, 142, 0.45) !important;
+            transform: translateY(-1px) !important;
+          }
+          .cl-socialButtonsBlockButtonText {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+            font-size: 14px !important;
+          }
+          .cl-formFieldLabel {
+            color: #d8d8e2 !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+          }
+          .cl-formFieldInput {
+            background: rgba(255, 255, 255, 0.04) !important;
+            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            color: #ffffff !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            height: 42px !important;
+            transition: all 0.2s ease !important;
+          }
+          .cl-formFieldInput:focus {
+            border-color: #eb5c8e !important;
+            box-shadow: 0 0 0 3px rgba(235, 92, 142, 0.25) !important;
+            background: rgba(255, 255, 255, 0.07) !important;
+          }
+          .cl-formButtonPrimary {
+            background: linear-gradient(135deg, #eb5c8e 0%, #d8487d 100%) !important;
+            border: none !important;
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            border-radius: 12px !important;
+            height: 46px !important;
+            font-size: 14px !important;
+            box-shadow: 0 6px 20px rgba(235, 92, 142, 0.35) !important;
+            transition: all 0.2s ease !important;
+          }
+          .cl-formButtonPrimary:hover {
+            background: linear-gradient(135deg, #f06999 0%, #e05286 100%) !important;
+            box-shadow: 0 8px 26px rgba(235, 92, 142, 0.5) !important;
+            transform: translateY(-1px) !important;
+          }
+          .cl-footerActionLink {
+            color: #eb5c8e !important;
+            font-weight: 600 !important;
+          }
+          .cl-footerActionLink:hover {
+            color: #f27da6 !important;
+          }
+          .cl-footerActionText {
+            color: #8e8e99 !important;
+          }
+          .cl-dividerLine {
+            background: linear-gradient(90deg, transparent, rgba(235, 92, 142, 0.35), transparent) !important;
+          }
+          .cl-dividerText {
+            color: #8b8b96 !important;
+            font-size: 11px !important;
+            letter-spacing: 0.1em !important;
+          }
+          .cl-footer {
+            background: transparent !important;
+          }
+          .cl-devModeBadge, .cl-internal-b3fm6y, .cl-internal-1dauvpw {
+            background: rgba(235, 92, 142, 0.1) !important;
+            border: 1px solid rgba(235, 92, 142, 0.3) !important;
+            color: #eb5c8e !important;
+          }
+        `}</style>
       </div>
     );
   }
@@ -808,73 +1123,117 @@ export default function AdminPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0e0e12',
+        background: 'radial-gradient(ellipse at 50% 15%, rgba(220, 53, 69, 0.16) 0%, rgba(18, 16, 23, 0.96) 50%, #0a090d 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: '36px 20px',
         color: '#fff',
-        fontFamily: "'DM Sans', sans-serif"
+        fontFamily: "'DM Sans', sans-serif",
+        position: 'relative',
+        overflow: 'hidden'
       }}>
+        {/* Glow */}
+        <div style={{
+          position: 'absolute',
+          top: '8%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '500px',
+          height: '500px',
+          background: 'radial-gradient(circle, rgba(220, 53, 69, 0.15) 0%, transparent 68%)',
+          filter: 'blur(65px)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }} />
+
         <div style={{
           maxWidth: '520px',
           width: '100%',
-          background: '#15151b',
-          borderRadius: '16px',
+          background: 'linear-gradient(165deg, rgba(23, 21, 28, 0.96) 0%, rgba(14, 13, 18, 0.98) 100%)',
+          borderRadius: '22px',
           border: '1px solid rgba(220, 53, 69, 0.3)',
           padding: '40px 32px',
           textAlign: 'center',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
+          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(220, 53, 69, 0.15)',
+          backdropFilter: 'blur(20px)',
+          position: 'relative',
+          zIndex: 1
         }}>
           <div style={{
-            width: '64px',
-            height: '64px',
+            width: '68px',
+            height: '68px',
             borderRadius: '50%',
-            background: 'rgba(220, 53, 69, 0.15)',
+            background: 'rgba(220, 53, 69, 0.12)',
+            border: '1px solid rgba(220, 53, 69, 0.35)',
             color: '#ff4d6d',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '32px',
-            margin: '0 auto 20px auto'
+            fontSize: '30px',
+            margin: '0 auto 20px auto',
+            boxShadow: '0 0 25px rgba(220, 53, 69, 0.2)'
           }}>
             🔒
           </div>
 
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '26px', color: '#ff4d6d', margin: '0 0 12px 0' }}>
+          <h2 style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: '27px',
+            color: '#ffffff',
+            margin: '0 0 8px 0',
+            fontWeight: 600
+          }}>
             Accès Administrateur Refusé
           </h2>
 
-          <p style={{ color: '#e0e0e0', fontSize: '15px', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-            {adminErrorMsg || "La limite des 2 administrateurs Oumalya autorisés a été atteinte."}
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '0.25em',
+            color: '#ff4d6d',
+            textTransform: 'uppercase',
+            marginBottom: '16px'
+          }}>
+            Limite de 2 Administrateurs Atteinte
+          </div>
+
+          <p style={{ color: '#d0d0d8', fontSize: '14.5px', lineHeight: 1.6, margin: '0 0 20px 0' }}>
+            {adminErrorMsg || "La limite des 2 administrateurs Oumalya autorisés a été atteinte pour ce compte."}
           </p>
 
           <div style={{
-            background: 'rgba(255,255,255,0.04)',
-            padding: '12px 16px',
-            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.04)',
+            padding: '14px 18px',
+            borderRadius: '12px',
             fontSize: '13px',
-            color: '#a0a0a5',
+            color: '#a0a0ab',
             marginBottom: '28px',
-            border: '1px solid rgba(255,255,255,0.08)'
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            textAlign: 'left'
           }}>
-            Compte connecté : <strong>{user?.primaryEmailAddress?.emailAddress || user?.id}</strong>
-            <br />
-            Seuls les 2 premiers administrateurs connectés ont accès à ce tableau de bord.
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ color: '#888' }}>Compte connecté :</span>
+              <strong style={{ color: '#fff' }}>{user?.primaryEmailAddress?.emailAddress || user?.id}</strong>
+            </div>
+            <div style={{ fontSize: '12px', color: '#888' }}>
+              Seuls les 2 premiers administrateurs enregistrés peuvent accéder aux outils de gestion de la boutique Oumalya.
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <SignOutButton>
               <button style={{
-                background: '#ff4d6d',
+                background: 'linear-gradient(135deg, #ff4d6d 0%, #d83252 100%)',
                 color: '#fff',
                 border: 'none',
-                padding: '10px 20px',
-                borderRadius: '8px',
+                padding: '12px 24px',
+                borderRadius: '12px',
                 fontWeight: 600,
                 fontSize: '13px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(220, 53, 69, 0.35)'
               }}>
                 Se déconnecter
               </button>
@@ -883,11 +1242,11 @@ export default function AdminPage() {
             <Link
               href="/"
               style={{
-                background: 'transparent',
+                background: 'rgba(255, 255, 255, 0.05)',
                 color: '#fff',
-                border: '1px solid rgba(255,255,255,0.2)',
-                padding: '10px 20px',
-                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                padding: '12px 24px',
+                borderRadius: '12px',
                 fontWeight: 500,
                 fontSize: '13px',
                 textDecoration: 'none',
