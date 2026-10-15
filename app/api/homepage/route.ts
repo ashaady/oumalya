@@ -5,7 +5,7 @@ import { HomePageSettings, DEFAULT_HOMEPAGE_SETTINGS } from '@/data/homepage';
 import { FASTAPI_BASE_URL } from '@/lib/fastapi';
 import { getHomepageFromSupabase, saveHomepageToSupabase } from '@/lib/catalog-sync';
 
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || 'sk_test_REDACTED';
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || '';
 const homeFilePath = path.join(process.cwd(), 'data', 'homepage.json');
 
 function getStoredHomepage(): HomePageSettings {

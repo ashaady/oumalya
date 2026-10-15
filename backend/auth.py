@@ -12,14 +12,8 @@ except ImportError:
     from backend.database import get_db
     from backend.models import AdminUser
 
-CLERK_SECRET_KEY = os.getenv(
-    "CLERK_SECRET_KEY",
-    "sk_test_REDACTED"
-)
-CLERK_PUBLISHABLE_KEY = os.getenv(
-    "CLERK_PUBLISHABLE_KEY",
-    "pk_test_ZmFzdC10b3J0b2lzZS01MTUuY2xlcmsuYWNjb3VudHMuZGV2JA"
-)
+CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
+CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY", "")
 CLERK_JWKS_URL = os.getenv(
     "CLERK_JWKS_URL",
     "https://fast-tortoise-515.clerk.accounts.dev/.well-known/jwks.json"

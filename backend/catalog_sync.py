@@ -5,9 +5,7 @@ import httpx
 from typing import Optional, List, Dict, Any
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jufenigdvmpjwguyjwqw.supabase.co").rstrip("/")
-DEFAULT_SERVICE_KEY = "REDACTED_SERVICE_ROLE_KEY"
-_env_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY") or ""
-SUPABASE_KEY = _env_key if _env_key.startswith("ey") else DEFAULT_SERVICE_KEY
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_KEY", "")
 BUCKET = "oumalya-images"
 FILE_NAME = "oumalya_catalog.json"
 

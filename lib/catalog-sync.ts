@@ -3,9 +3,7 @@ import { CategoryItem } from '@/data/categories';
 import { HomePageSettings, DEFAULT_HOMEPAGE_SETTINGS } from '@/data/homepage';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jufenigdvmpjwguyjwqw.supabase.co';
-const DEFAULT_SERVICE_KEY = 'REDACTED_SERVICE_ROLE_KEY';
-const _envKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const SUPABASE_KEY = _envKey.startsWith('ey') ? _envKey : DEFAULT_SERVICE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
 const BUCKET = 'oumalya-images';
 const FILE_NAME = 'oumalya_catalog.json';
 

@@ -12,7 +12,7 @@ import {
 import { FASTAPI_BASE_URL } from '@/lib/fastapi';
 import { getCatalogFromSupabase, saveCatalogToSupabase } from '@/lib/catalog-sync';
 
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || 'sk_test_REDACTED';
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || '';
 const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
 
 function getStoredProducts(): Product[] {

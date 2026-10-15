@@ -4,7 +4,7 @@ import time
 import httpx
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jufenigdvmpjwguyjwqw.supabase.co").rstrip("/")
-SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "sb_secret_REDACTED"
+SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") or ""
 BUCKET_NAME = os.getenv("SUPABASE_STORAGE_BUCKET", "oumalya-images")
 
 def get_headers(content_type: str = "application/json") -> dict:
