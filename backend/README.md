@@ -87,14 +87,4 @@ python run.py
 uvicorn main:app --reload --port 8000
 ```
 
-Documentation interactive Swagger disponible sur : `http://localhost:8000/docs`
-
----
-
-## ☁️ Déploiement
-
-### Déploiement sur FastAPI Cloud
-```bash
-fastapi deploy backend
-```
-Application en production : `https://oumalya-api.fastapicloud.dev`
+Documentation interactive Swagger disponible localement sur : `http://localhost:8000/docs`

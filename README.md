@@ -94,13 +94,3 @@ OUMALYA/
 ├── next.config.js              # Configuration Next.js
 └── tsconfig.json               # Configuration TypeScript
 ```
-
----
-
-## 🌐 Déploiements en Production
-
-* **Frontend (Vercel) :** [https://oumalya-aurl.vercel.app](https://oumalya-aurl.vercel.app)
-* **Backend API (FastAPI Cloud) :** [https://oumalya-api.fastapicloud.dev](https://oumalya-api.fastapicloud.dev)
-* **Base de données & Stockage :** [Supabase Cloud](https://jufenigdvmpjwguyjwqw.supabase.co)
-* **Authentification :** [Clerk](https://clerk.com) (Whitelist stricte : 2 administrateurs maximum)
-
