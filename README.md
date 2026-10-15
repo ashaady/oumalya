@@ -44,39 +44,63 @@ Accédez à [http://localhost:3000/admin](http://localhost:3000/admin) (ou via l
 
 ```
 OUMALYA/
-├── app/
+├── app/                        # ⚡ Frontend Next.js 14 (App Router)
 │   ├── layout.tsx              # Layout racine (polices DM Sans & Playfair Display, Viewport, CartProvider)
-│   ├── page.tsx                # Accueil (ex index.html)
-│   ├── boutique/page.tsx       # Boutique & filtres (ex boutique.html)
-│   ├── produit/page.tsx        # Fiche produit détaillée (ex produit.html?id=...)
-│   ├── panier/page.tsx         # Panier d'achat (ex panier.html)
-│   ├── commande/page.tsx       # Validation de commande (ex commande.html)
-│   ├── apropos/page.tsx        # Notre histoire (ex apropos.html)
-│   ├── contact/page.tsx        # Formulaire de contact (ex contact.html)
-│   ├── livraison/page.tsx      # Guide livraison & FAQ (ex livraison.html)
-│   ├── favoris/page.tsx        # Articles favoris (ex favoris.html)
-│   ├── admin/page.tsx          # 👑 Espace d'administration du catalogue
-│   └── api/
-│       ├── products/route.ts   # API CRUD pour les produits (data/products.json)
-│       └── upload/route.ts     # API d'upload d'images vers public/images/uploads/
-├── components/
-│   └── SubpageLayout.tsx       # Layout partagé pour les sous-pages (header, nav mobile, footer, toast)
+│   ├── page.tsx                # Accueil (visuels personnalisables)
+│   ├── boutique/page.tsx       # Boutique & filtres catégories
+│   ├── produit/page.tsx        # Fiche produit détaillée
+│   ├── panier/page.tsx         # Panier d'achat interactif
+│   ├── commande/page.tsx       # Validation de commande & WhatsApp
+│   ├── apropos/page.tsx        # Notre histoire
+│   ├── contact/page.tsx        # Formulaire de contact
+│   ├── livraison/page.tsx      # Guide livraison & FAQ
+│   ├── favoris/page.tsx        # Articles favoris
+│   ├── admin/page.tsx          # 👑 Espace d'administration complet (Clerk Auth, 2 admins max)
+│   └── api/                    # Routes API Next.js (fallback & proxy)
+│       ├── products/route.ts   # CRUD Produits
+│       ├── categories/route.ts # CRUD Catégories
+│       ├── homepage/route.ts   # Personnalisation Accueil
+│       ├── orders/route.ts     # Commandes
+│       └── upload/route.ts     # Upload images vers Supabase
+│
+├── backend/                    # 🚀 Backend FastAPI Cloud
+│   ├── main.py                 # Application FastAPI & middleware CORS
+│   ├── auth.py                 # Authentification Clerk (whitelist des 2 admins)
+│   ├── catalog_sync.py         # Persistance permanente Supabase Storage
+│   ├── database.py             # Session SQLAlchemy
+│   ├── models.py               # Modèles de données
+│   ├── schemas.py              # Schémas Pydantic
+│   ├── supabase_client.py      # Client Supabase
+│   ├── Dockerfile              # Conteneur Docker
+│   ├── Procfile                # Procfile PaaS
+│   ├── requirements.txt        # Dépendances Python
+│   └── routers/                # Endpoints modulaires
+│       ├── admin.py            # Vérification et gestion des admins
+│       ├── categories.py       # API Catégories
+│       ├── homepage.py         # API Visuels Accueil
+│       ├── orders.py           # API Commandes
+│       ├── products.py         # API Produits
+│       ├── settings.py         # API Paramètres
+│       └── upload.py           # API Téléversement images
+│
+├── components/                 # Composants React partagés
 ├── context/
-│   └── CartContext.tsx         # Gestion globale des produits, du panier et des favoris
-├── data/
-│   ├── products.ts             # Typage et produits de repli
-│   └── products.json           # Base de données JSON des produits du catalogue
-├── public/
-│   └── images/
-│       ├── uploads/            # Dossier de stockage des images uploadées
-│       └── *.jpg               # 12 photographies d'origine optimisées
-├── styles/
-│   ├── globals.css             # Styles de base et variables globales
-│   ├── home.scoped.css         # Styles de la page d'accueil (index.html)
-│   ├── boutique.scoped.css     # Styles de la boutique (boutique.html)
-│   ├── subpages.scoped.css     # Styles des sous-pages (produit, panier, commande, apropos, etc.)
-│   └── admin.scoped.css        # Styles dédiés au panneau d'administration
-├── _original_html/             # Sauvegarde des fichiers HTML d'origine
-├── next.config.js              # Configuration Next.js avec réécriture des URLs .html
+│   └── CartContext.tsx         # Contexte global (Panier, Favoris, Catalogue, Visuels)
+├── data/                       # Données locales & types
+│   ├── homepage.ts             # Types et valeurs par défaut accueil
+│   └── products.ts             # Données de repli
+├── public/                     # Ressources statiques & images
+├── styles/                     # Feuilles de styles CSS scopées
+├── next.config.js              # Configuration Next.js
 └── tsconfig.json               # Configuration TypeScript
 ```
+
+---
+
+## 🌐 Déploiements en Production
+
+* **Frontend (Vercel) :** [https://oumalya-aurl.vercel.app](https://oumalya-aurl.vercel.app)
+* **Backend API (FastAPI Cloud) :** [https://oumalya-api.fastapicloud.dev](https://oumalya-api.fastapicloud.dev)
+* **Base de données & Stockage :** [Supabase Cloud](https://jufenigdvmpjwguyjwqw.supabase.co)
+* **Authentification :** [Clerk](https://clerk.com) (Whitelist stricte : 2 administrateurs maximum)
+
