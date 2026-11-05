@@ -81,6 +81,20 @@ export const DEFAULT_HOMEPAGE_SETTINGS: HomePageSettings = {
       subtitle: 'Confort et style au quotidien',
       image: '/images/category-crocs.jpg',
       link: '/boutique?categorie=crocs'
+    },
+    {
+      id: 'sacs',
+      title: 'Sacs',
+      subtitle: 'Accessoires chic et raffinés',
+      image: '/images/hero-abaya-pink.jpg',
+      link: '/boutique?categorie=sacs'
+    },
+    {
+      id: 'sandales',
+      title: 'Sandales',
+      subtitle: 'Allure estivale et confort absolu',
+      image: '/images/hero-abaya-pink.jpg',
+      link: '/boutique?categorie=sandales'
     }
   ],
   promoBanner: {

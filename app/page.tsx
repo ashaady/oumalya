@@ -176,7 +176,36 @@ export default function HomePage() {
         <div className="container">
           {/* Categories Section */}
           <section aria-label="Nos catégories" className="categories">
-            {homeSettings?.categoryCards && homeSettings.categoryCards.length > 0 ? (
+            {categories && categories.length > 0 ? (
+              categories.map((cat) => {
+                const customCard = homeSettings?.categoryCards?.find(c => c.id === cat.id);
+                const isAbaya = cat.id === 'abayas' || cat.id === 'abaya';
+                const cardClass = isAbaya ? 'category abaya abayas' : `category ${cat.id}`;
+                const title = customCard?.title || cat.name;
+                const subtitle = customCard?.subtitle || (isAbaya ? 'Élégance, confort et modernité' : cat.id === 'crocs' ? 'Confort et style au quotidien' : 'Découvrez notre collection exclusive');
+                const image = customCard?.image || cat.image || (cat.id === 'crocs' ? '/images/category-crocs.jpg' : '/images/category-abayas.jpg');
+                const link = customCard?.link || `/boutique?categorie=${cat.id}`;
+                const objectPos = customCard?.objectPosition || (isAbaya ? 'center 15%' : 'center');
+                return (
+                  <article key={cat.id} className={cardClass} id={cat.id}>
+                    <img
+                      alt={title}
+                      className="category-photo"
+                      loading="lazy"
+                      src={image}
+                      style={{ objectPosition: objectPos }}
+                    />
+                    <div className="category-copy">
+                      <h2>{title}</h2>
+                      <p>{subtitle}</p>
+                      <Link className="pill-button" href={link}>
+                        Voir la collection <svg><use href="#i-arrow"></use></svg>
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })
+            ) : homeSettings?.categoryCards && homeSettings.categoryCards.length > 0 ? (
               homeSettings.categoryCards.map((card) => {
                 const isAbaya = card.id === 'abayas' || card.id === 'abaya';
                 const cardClass = isAbaya ? 'category abaya abayas' : `category ${card.id}`;

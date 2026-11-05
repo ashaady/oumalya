@@ -120,26 +120,44 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Fetch products from API as canonical source and sync localStorage
   const refreshProducts = useCallback(async () => {
     // 1. Immediately read cached products from localStorage if present
+    let localList: Product[] = [];
     try {
       const cached = localStorage.getItem(PRODUCTS_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localList = parsed;
           setProducts(parsed);
         }
       }
     } catch {}
 
-    // 2. Fetch from API (canonical source of truth, no re-adding deleted items)
+    // 2. Fetch from API (canonical source of truth, sync any newly added local products)
     try {
       const res = await fetch('/api/products');
       if (res.ok) {
         const apiData: Product[] = await res.json();
-        if (Array.isArray(apiData)) {
-          setProducts(apiData);
-          try {
-            localStorage.setItem(PRODUCTS_KEY, JSON.stringify(apiData));
-          } catch {}
+        if (Array.isArray(apiData) && apiData.length > 0) {
+          const apiIds = new Set(apiData.map(p => p.id));
+          const missingLocals = localList.filter(p => !apiIds.has(p.id));
+
+          if (missingLocals.length > 0) {
+            for (const missing of missingLocals) {
+              try {
+                await fetch('/api/products', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(missing)
+                });
+              } catch {}
+            }
+            const merged = [...apiData, ...missingLocals];
+            setProducts(merged);
+            try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(merged)); } catch {}
+          } else {
+            setProducts(apiData);
+            try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(apiData)); } catch {}
+          }
           return;
         }
       }
@@ -150,11 +168,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch categories from API and sync localStorage
   const refreshCategories = useCallback(async () => {
+    let localCats: CategoryItem[] = [];
     try {
       const cached = localStorage.getItem(CATEGORIES_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length) {
+          localCats = parsed;
           setCategories(parsed);
         }
       }
@@ -164,9 +184,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/categories');
       if (res.ok) {
         const apiData: CategoryItem[] = await res.json();
-        if (Array.isArray(apiData)) {
-          setCategories(apiData);
-          try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(apiData)); } catch {}
+        if (Array.isArray(apiData) && apiData.length > 0) {
+          const apiIds = new Set(apiData.map(c => c.id));
+          const missingLocals = localCats.filter(c => !apiIds.has(c.id));
+
+          if (missingLocals.length > 0) {
+            for (const missing of missingLocals) {
+              try {
+                await fetch('/api/categories', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(missing)
+                });
+              } catch {}
+            }
+            const merged = [...apiData, ...missingLocals];
+            setCategories(merged);
+            try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(merged)); } catch {}
+          } else {
+            setCategories(apiData);
+            try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(apiData)); } catch {}
+          }
         }
       }
     } catch {}

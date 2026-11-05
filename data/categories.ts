@@ -26,5 +26,23 @@ export const DEFAULT_CATEGORIES: CategoryItem[] = [
     image: '/images/category-crocs.jpg',
     defaultSizes: ['36', '37', '38', '39', '40', '41'],
     isDefault: false
+  },
+  {
+    id: 'sacs',
+    name: 'Sacs',
+    label: 'SACS · COLLECTION',
+    icon: '👜',
+    image: '/images/hero-abaya-pink.jpg',
+    defaultSizes: ['Standard'],
+    isDefault: false
+  },
+  {
+    id: 'sandales',
+    name: 'Sandales',
+    label: 'SANDALES · COLLECTION',
+    icon: '👡',
+    image: '/images/hero-abaya-pink.jpg',
+    defaultSizes: ['36', '37', '38', '39', '40', '41'],
+    isDefault: false
   }
 ];
