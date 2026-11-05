@@ -37,15 +37,15 @@ function BoutiqueContent() {
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-  // Sync category with URL search param (?categorie=abayas, ?categorie=crocs, etc.)
+  // Sync category with URL search param (?categorie=...)
   useEffect(() => {
     const cat = searchParams.get('categorie');
-    if (cat) {
+    if (cat && (!categories.length || categories.some(c => c.id === cat))) {
       setCategory(cat);
     } else {
       setCategory('all');
     }
-  }, [searchParams]);
+  }, [searchParams, categories]);
 
   const selectCategory = (val: string, scroll = false) => {
     setCategory(val);
@@ -55,8 +55,13 @@ function BoutiqueContent() {
   };
 
   const filteredProducts = useMemo(() => {
+    const validCatIds = new Set(categories.map(c => c.id));
     let list = products.filter(p => {
-      const pCat = p.category || p.cat || 'abayas';
+      const pCat = p.category || p.cat || '';
+      // If categories are configured, hide products whose category was deleted
+      if (validCatIds.size > 0 && !validCatIds.has(pCat)) {
+        return false;
+      }
       const matchesCat =
         category === 'all' ||
         (category === 'favorites' && favorites[p.id]) ||
@@ -224,7 +229,7 @@ function BoutiqueContent() {
             <div className="category-row">
               <div>
                 <h2>À chaque envie, son style</h2>
-                <p>Découvrez nos deux univers.</p>
+                <p>{categories.length > 1 ? `Découvrez nos ${categories.length} univers.` : 'Découvrez nos pièces sélectionnées.'}</p>
               </div>
               <div className="category-cards" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 {categories.map(c => {
@@ -428,20 +433,16 @@ function BoutiqueContent() {
               <div className="footer-links">
                 <Link href="/">Accueil</Link>
                 <Link href="/boutique">Boutique</Link>
-                <button
-                  type="button"
-                  style={{ background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0, font: 'inherit', cursor: 'pointer' }}
-                  onClick={() => selectCategory('abayas', true)}
-                >
-                  Abayas
-                </button>
-                <button
-                  type="button"
-                  style={{ background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0, font: 'inherit', cursor: 'pointer' }}
-                  onClick={() => selectCategory('crocs', true)}
-                >
-                  Crocs
-                </button>
+                {categories.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    style={{ background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0, font: 'inherit', cursor: 'pointer' }}
+                    onClick={() => selectCategory(c.id, true)}
+                  >
+                    {c.name}
+                  </button>
+                ))}
               </div>
             </div>
             <div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
@@ -52,7 +52,13 @@ export default function HomePage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [closeCart, closeSearch]);
 
-  const searchResults = products.filter(p =>
+  const validCatIds = useMemo(() => new Set(categories.map(c => c.id)), [categories]);
+  const activeProducts = useMemo(() => {
+    if (!categories.length) return products;
+    return products.filter(p => validCatIds.has(p.category || p.cat));
+  }, [products, validCatIds]);
+
+  const searchResults = activeProducts.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
   );
 
@@ -254,7 +260,7 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="product-grid">
-              {products.slice(0, 8).map(p => (
+              {activeProducts.slice(0, 8).map(p => (
                 <article key={p.id} className="product-card" id={`produit-${p.id}`}>
                   <div className="product-image-wrap">
                     <Link href={`/produit?id=${p.id}`}>

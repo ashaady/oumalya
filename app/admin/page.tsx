@@ -1622,7 +1622,9 @@ export default function AdminPage() {
                   </div>
                   <div className="kpi-value">{stats.totalProducts}</div>
                   <div className="kpi-sub">
-                    {stats.abayasCount} Abayas · {stats.crocsCount} Crocs
+                    {categories.length > 0
+                      ? categories.map(c => `${products.filter(p => (p.category || p.cat) === c.id).length} ${c.name}`).join(' · ')
+                      : `${stats.totalProducts} articles`}
                   </div>
                 </div>
 
@@ -1719,31 +1721,26 @@ export default function AdminPage() {
                     <h3 className="panel-title">Répartition Collections</h3>
                   </div>
 
-                  <div className="progress-row">
-                    <div className="progress-info">
-                      <span>Abayas & Hijabs</span>
-                      <span>{stats.abayasCount} réf. ({Math.round((stats.abayasCount / Math.max(1, stats.totalProducts)) * 100)}%)</span>
-                    </div>
-                    <div className="progress-track">
-                      <div
-                        className="progress-fill"
-                        style={{ width: `${(stats.abayasCount / Math.max(1, stats.totalProducts)) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="progress-row">
-                    <div className="progress-info">
-                      <span>Crocs Customisées</span>
-                      <span>{stats.crocsCount} réf. ({Math.round((stats.crocsCount / Math.max(1, stats.totalProducts)) * 100)}%)</span>
-                    </div>
-                    <div className="progress-track">
-                      <div
-                        className="progress-fill crocs"
-                        style={{ width: `${(stats.crocsCount / Math.max(1, stats.totalProducts)) * 100}%` }}
-                      />
-                    </div>
-                  </div>
+                  {categories.map((c, idx) => {
+                    const cCount = products.filter(p => (p.category || p.cat) === c.id).length;
+                    const pct = Math.round((cCount / Math.max(1, stats.totalProducts)) * 100);
+                    const colors = ['#eb5c8e', '#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                    const color = colors[idx % colors.length];
+                    return (
+                      <div key={c.id} className="progress-row">
+                        <div className="progress-info">
+                          <span>{c.icon ? `${c.icon} ` : ''}{c.name}</span>
+                          <span>{cCount} réf. ({pct}%)</span>
+                        </div>
+                        <div className="progress-track">
+                          <div
+                            className="progress-fill"
+                            style={{ width: `${pct}%`, background: color }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
 
                   <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--stroke-light)' }}>
                     <h4 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 12px' }}>

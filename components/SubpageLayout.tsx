@@ -89,8 +89,11 @@ export default function SubpageLayout({ children }: SubpageLayoutProps) {
               <h3>La boutique</h3>
               <div className="footer-links">
                 <Link href="/boutique">Tous les produits</Link>
-                <Link href="/boutique?categorie=abayas">Abayas</Link>
-                <Link href="/boutique?categorie=crocs">Crocs</Link>
+                {categories.map(c => (
+                  <Link key={c.id} href={`/boutique?categorie=${c.id}`}>
+                    {c.name}
+                  </Link>
+                ))}
                 <Link href="/favoris">Mes favoris</Link>
               </div>
             </div>
