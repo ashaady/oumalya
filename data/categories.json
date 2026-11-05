@@ -11,7 +11,7 @@
       "L",
       "XL"
     ],
-    "isDefault": true
+    "isDefault": false
   },
   {
     "id": "crocs",
@@ -27,6 +27,6 @@
       "40",
       "41"
     ],
-    "isDefault": true
+    "isDefault": false
   }
 ]

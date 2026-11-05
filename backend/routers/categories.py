@@ -26,7 +26,7 @@ DEFAULT_CATEGORIES = [
         "icon": "👗",
         "image": "/images/category-abayas.jpg",
         "defaultSizes": ["S", "M", "L", "XL"],
-        "isDefault": True
+        "isDefault": False
     },
     {
         "id": "crocs",
@@ -35,7 +35,7 @@ DEFAULT_CATEGORIES = [
         "icon": "👡",
         "image": "/images/category-crocs.jpg",
         "defaultSizes": ["36", "37", "38", "39", "40", "41"],
-        "isDefault": True
+        "isDefault": False
     }
 ]
 
@@ -150,8 +150,8 @@ def delete_category_by_id(
     if not cat:
         raise HTTPException(status_code=404, detail="Catégorie introuvable")
 
-    if cat.is_default or cat.id in ["abayas", "crocs"]:
-        raise HTTPException(status_code=400, detail="Impossible de supprimer les catégories fondamentales par défaut")
+# Any category can be deleted
+    pass
 
     db.delete(cat)
     db.commit()

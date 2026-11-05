@@ -276,11 +276,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [showToast]);
 
   const deleteCategory = useCallback(async (id: string): Promise<boolean> => {
-    if (id === 'abayas' || id === 'crocs') {
-      showToast('Impossible de supprimer les catégories principales');
-      return false;
-    }
-
     setCategories(prev => {
       const next = prev.filter(c => c.id !== id);
       try { localStorage.setItem(CATEGORIES_KEY, JSON.stringify(next)); } catch {}

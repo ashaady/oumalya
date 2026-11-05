@@ -404,7 +404,7 @@ export function saveCategoryToDb(cat: CategoryItem): CategoryItem {
 export function deleteCategoryFromDb(id: string): boolean {
   try {
     const db = getDb();
-    const stmt = db.prepare('DELETE FROM categories WHERE id = ? AND is_default = 0');
+    const stmt = db.prepare('DELETE FROM categories WHERE id = ?');
     const result = stmt.run(id);
     return result.changes > 0;
   } catch {

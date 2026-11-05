@@ -16,7 +16,7 @@ export const DEFAULT_CATEGORIES: CategoryItem[] = [
     icon: '👗',
     image: '/images/category-abayas.jpg',
     defaultSizes: ['S', 'M', 'L', 'XL'],
-    isDefault: true
+    isDefault: false
   },
   {
     id: 'crocs',
@@ -25,6 +25,6 @@ export const DEFAULT_CATEGORIES: CategoryItem[] = [
     icon: '👡',
     image: '/images/category-crocs.jpg',
     defaultSizes: ['36', '37', '38', '39', '40', '41'],
-    isDefault: true
+    isDefault: false
   }
 ];

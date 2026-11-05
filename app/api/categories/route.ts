@@ -184,10 +184,6 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID de catégorie requis' }, { status: 400 });
     }
 
-    if (id === 'abayas' || id === 'crocs') {
-      return NextResponse.json({ error: 'Impossible de supprimer les catégories principales par défaut' }, { status: 400 });
-    }
-
     const authHeader = req.headers.get('authorization');
 
     // Forward to FastAPI

@@ -1909,27 +1909,7 @@ export default function AdminPage() {
                   >
                     🏷️ Catégories ({categories.length})
                   </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        showToast('Synchronisation avec Supabase Cloud...');
-                        const res = await fetch('/api/products?restore=true');
-                        if (res.ok) {
-                          await refreshProducts();
-                          showToast('✅ Vos 24 produits ont été récupérés et affichés !');
-                        } else {
-                          showToast('Erreur lors de la récupération');
-                        }
-                      } catch {
-                        showToast('Erreur de connexion');
-                      }
-                    }}
-                    className="btn btn-outline"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderColor: '#0284c7', color: '#0284c7' }}
-                    title="Récupérer et afficher les produits sauvegardés sur le Cloud"
-                  >
-                    🔄 Récupérer du Cloud
-                  </button>
+
                   <button onClick={openCreateProduct} className="btn btn-primary">
                     + Ajouter un produit
                   </button>
@@ -2960,27 +2940,7 @@ export default function AdminPage() {
                     >
                       Restaurer catalogue de base
                     </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          showToast('Récupération des produits depuis Supabase Cloud...');
-                          const res = await fetch('/api/products?restore=true');
-                          if (res.ok) {
-                            await refreshProducts();
-                            showToast('✅ Tous vos produits ont été récupérés avec succès !');
-                          } else {
-                            showToast('Erreur lors de la récupération');
-                          }
-                        } catch {
-                          showToast('Erreur réseau lors de la récupération');
-                        }
-                      }}
-                      className="btn btn-primary"
-                      style={{ background: '#0284c7', borderColor: '#0284c7', color: '#fff' }}
-                    >
-                      📥 Récupérer mes produits (Supabase)
-                    </button>
+
                   </div>
                 </form>
               </div>
@@ -3474,7 +3434,6 @@ export default function AdminPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
                   {categories.map(c => {
                     const count = products.filter(p => (p.category || p.cat) === c.id).length;
-                    const isProtected = c.id === 'abayas' || c.id === 'crocs';
                     return (
                       <div
                         key={c.id}
@@ -3499,27 +3458,21 @@ export default function AdminPage() {
                         </div>
 
                         <div>
-                          {isProtected ? (
-                            <span style={{ fontSize: '11px', color: 'var(--muted)', background: '#eee', padding: '3px 8px', borderRadius: '6px' }}>
-                              Par défaut
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (count > 0) {
-                                  if (!confirm(`Cette catégorie contient ${count} produit(s). Les produits ne seront pas supprimés mais n'auront plus cette catégorie. Continuer ?`)) {
-                                    return;
-                                  }
-                                }
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const confirmMsg = count > 0
+                                ? `Voulez-vous vraiment supprimer la catégorie "${c.name}" ?\n\nElle contient ${count} produit(s). Les produits resteront dans le catalogue mais n'auront plus cette catégorie affectée.`
+                                : `Voulez-vous vraiment supprimer la catégorie "${c.name}" ?`;
+                              if (confirm(confirmMsg)) {
                                 deleteCategory(c.id);
-                              }}
-                              className="btn btn-danger btn-sm"
-                              style={{ padding: '4px 10px', fontSize: '11.5px' }}
-                            >
-                              Supprimer
-                            </button>
-                          )}
+                              }
+                            }}
+                            className="btn btn-danger btn-sm"
+                            style={{ padding: '5px 12px', fontSize: '12px' }}
+                          >
+                            Supprimer
+                          </button>
                         </div>
                       </div>
                     );

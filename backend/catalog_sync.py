@@ -179,7 +179,7 @@ def sync_db_to_supabase(db) -> bool:
                 "icon": c.icon or "✨",
                 "image": c.image or "/images/category-abayas.jpg",
                 "defaultSizes": sizes,
-                "isDefault": bool(c.is_default)
+                "isDefault": False
             })
 
         # 3. Retrieve homepage settings
@@ -223,7 +223,7 @@ def restore_supabase_to_db(db) -> bool:
                     icon=item.get("icon", "✨"),
                     image=item.get("image", "/images/category-abayas.jpg"),
                     default_sizes=json.dumps(item.get("defaultSizes", ["Standard"])),
-                    is_default=1 if item.get("isDefault") else 0,
+                    is_default=0,
                     order_num=idx + 1,
                     created_at=str(time.time())
                 )
