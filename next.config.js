@@ -26,14 +26,6 @@ const nextConfig = {
       { source: '/favoris.html', destination: '/favoris' }
     ];
 
-    const fastapiUrl = process.env.FASTAPI_URL || process.env.NEXT_PUBLIC_FASTAPI_URL;
-    if (fastapiUrl) {
-      rewrites.push({
-        source: '/api/:path*',
-        destination: `${fastapiUrl}/api/:path*`
-      });
-    }
-
     return rewrites;
   }
 };
