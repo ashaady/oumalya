@@ -154,6 +154,7 @@ const clerkOumalyaAppearance = {
 export default function AdminPage() {
   const {
     products,
+    refreshProducts,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -1908,6 +1909,27 @@ export default function AdminPage() {
                   >
                     🏷️ Catégories ({categories.length})
                   </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        showToast('Synchronisation avec Supabase Cloud...');
+                        const res = await fetch('/api/products?restore=true');
+                        if (res.ok) {
+                          await refreshProducts();
+                          showToast('✅ Vos 24 produits ont été récupérés et affichés !');
+                        } else {
+                          showToast('Erreur lors de la récupération');
+                        }
+                      } catch {
+                        showToast('Erreur de connexion');
+                      }
+                    }}
+                    className="btn btn-outline"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderColor: '#0284c7', color: '#0284c7' }}
+                    title="Récupérer et afficher les produits sauvegardés sur le Cloud"
+                  >
+                    🔄 Récupérer du Cloud
+                  </button>
                   <button onClick={openCreateProduct} className="btn btn-primary">
                     + Ajouter un produit
                   </button>
@@ -2928,12 +2950,36 @@ export default function AdminPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        resetProducts();
-                        showToast('Catalogue réinitialisé aux valeurs par défaut');
+                        if (confirm("⚠️ ATTENTION : Êtes-vous certain de vouloir réinitialiser le catalogue ? Vos produits personnalisés seront remplacés par les modèles de base.")) {
+                          resetProducts();
+                          showToast('Catalogue réinitialisé aux valeurs par défaut');
+                        }
                       }}
                       className="btn btn-outline"
+                      style={{ color: '#dc2626', borderColor: '#fca5a5' }}
                     >
                       Restaurer catalogue de base
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          showToast('Récupération des produits depuis Supabase Cloud...');
+                          const res = await fetch('/api/products?restore=true');
+                          if (res.ok) {
+                            await refreshProducts();
+                            showToast('✅ Tous vos produits ont été récupérés avec succès !');
+                          } else {
+                            showToast('Erreur lors de la récupération');
+                          }
+                        } catch {
+                          showToast('Erreur réseau lors de la récupération');
+                        }
+                      }}
+                      className="btn btn-primary"
+                      style={{ background: '#0284c7', borderColor: '#0284c7', color: '#fff' }}
+                    >
+                      📥 Récupérer mes produits (Supabase)
                     </button>
                   </div>
                 </form>

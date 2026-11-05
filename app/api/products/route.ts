@@ -60,7 +60,30 @@ export async function GET(req: NextRequest) {
   const reset = searchParams.get('reset');
   const authHeader = req.headers.get('authorization');
 
-  // 1. Handle Reset
+  // 0. Handle Restore from Supabase Cloud
+  if (searchParams.get('restore') === 'true') {
+    try {
+      const cloudCatalog = await getCatalogFromSupabase();
+      if (cloudCatalog && Array.isArray(cloudCatalog.products) && cloudCatalog.products.length > 0) {
+        saveProducts(cloudCatalog.products);
+        try { resetProductsInDb(cloudCatalog.products); } catch {}
+        try {
+          await fetch(`${FASTAPI_BASE_URL}/api/products?restore=true`, {
+            headers: {
+              'x-admin-secret': CLERK_SECRET_KEY,
+              ...(authHeader ? { 'authorization': authHeader } : {})
+            },
+            cache: 'no-store'
+          });
+        } catch {}
+        return NextResponse.json(cloudCatalog.products);
+      }
+    } catch (err) {
+      console.warn('[Products GET restore] Error restoring from Supabase:', err);
+    }
+  }
+
+  // 1. Handle Reset (Local reset only, preserves Supabase Cloud backup)
   if (reset === 'true') {
     try {
       await fetch(`${FASTAPI_BASE_URL}/api/products?reset=true`, {
@@ -76,7 +99,6 @@ export async function GET(req: NextRequest) {
       resetProductsInDb(DEFAULT_PRODUCTS);
     } catch {}
     saveProducts(DEFAULT_PRODUCTS);
-    saveCatalogToSupabase(DEFAULT_PRODUCTS).catch(() => {});
     return NextResponse.json(DEFAULT_PRODUCTS);
   }
 
@@ -103,6 +125,17 @@ export async function GET(req: NextRequest) {
     if (apiRes.ok) {
       const data = await apiRes.json();
       if (Array.isArray(data)) {
+        // If FastAPI only returned <= 4 products, check if Supabase Cloud has more products
+        if (data.length <= 4) {
+          try {
+            const cloudCatalog = await getCatalogFromSupabase();
+            if (cloudCatalog && Array.isArray(cloudCatalog.products) && cloudCatalog.products.length > data.length) {
+              saveProducts(cloudCatalog.products);
+              try { resetProductsInDb(cloudCatalog.products); } catch {}
+              return NextResponse.json(cloudCatalog.products);
+            }
+          } catch {}
+        }
         saveProducts(data);
         return NextResponse.json(data);
       }
@@ -116,6 +149,7 @@ export async function GET(req: NextRequest) {
     const cloudCatalog = await getCatalogFromSupabase();
     if (cloudCatalog && Array.isArray(cloudCatalog.products) && (cloudCatalog.products.length > 0 || cloudCatalog.initialized)) {
       saveProducts(cloudCatalog.products);
+      try { resetProductsInDb(cloudCatalog.products); } catch {}
       return NextResponse.json(cloudCatalog.products);
     }
   } catch (cloudErr) {
