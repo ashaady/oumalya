@@ -26,6 +26,7 @@ export interface CartContextType {
   categories: CategoryItem[];
   refreshCategories: () => Promise<void>;
   addCategory: (data: Partial<CategoryItem>) => Promise<CategoryItem | null>;
+  updateCategory: (cat: CategoryItem) => Promise<CategoryItem | null>;
   deleteCategory: (id: string) => Promise<boolean>;
 
   // Homepage Visuals & Content
@@ -309,9 +310,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.warn('API category save error:', e);
     }
 
-    showToast(`Catégorie "${newCat.name}" créée avec succès`);
+    showToast(`Catégorie "${newCat.name}" enregistrée avec succès`);
     return newCat;
   }, [showToast]);
+
+  const updateCategory = useCallback(async (cat: CategoryItem): Promise<CategoryItem | null> => {
+    return addCategory(cat);
+  }, [addCategory]);
 
   const deleteCategory = useCallback(async (id: string): Promise<boolean> => {
     setCategories(prev => {
@@ -725,6 +730,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         categories,
         refreshCategories,
         addCategory,
+        updateCategory,
         deleteCategory,
         homeSettings,
         refreshHomeSettings,

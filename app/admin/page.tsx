@@ -6,6 +6,7 @@ import { useAuth, useUser, SignIn, SignOutButton, UserButton } from '@clerk/next
 import { useCart } from '@/context/CartContext';
 import { Product, formatPrice } from '@/data/products';
 import { HomePageSettings, DEFAULT_HOMEPAGE_SETTINGS } from '@/data/homepage';
+import { CategoryItem } from '@/data/categories';
 
 const PRESET_IMAGES = [
   { label: 'Abaya Soie Rose (Hero)', url: '/images/hero-abaya-pink.jpg' },
@@ -48,7 +49,7 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
 }
 
-type TabKey = 'dashboard' | 'products' | 'orders' | 'homepage' | 'settings';
+type TabKey = 'dashboard' | 'products' | 'categories' | 'orders' | 'homepage' | 'settings';
 
 const clerkOumalyaAppearance = {
   variables: {
@@ -161,6 +162,7 @@ export default function AdminPage() {
     resetProducts,
     categories,
     addCategory,
+    updateCategory,
     deleteCategory,
     homeSettings,
     updateHomeSettings,
@@ -263,12 +265,54 @@ export default function AdminPage() {
   const [productSearch, setProductSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  // Category Modal State
+  // Category State & Modal (Create & Edit)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState('✨');
-  const [newCatSizes, setNewCatSizes] = useState('');
+  const [categoryModalMode, setCategoryModalMode] = useState<'create' | 'edit'>('create');
+  const [categoryForm, setCategoryForm] = useState<{
+    id: string;
+    name: string;
+    label: string;
+    icon: string;
+    image: string;
+    sizesText: string;
+  }>({
+    id: '',
+    name: '',
+    label: '',
+    icon: '✨',
+    image: '/images/hero-abaya-pink.jpg',
+    sizesText: 'S, M, L, XL'
+  });
   const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [isUploadingCatImg, setIsUploadingCatImg] = useState(false);
+  const [catSearch, setCatSearch] = useState('');
+  const catModalFileInputRef = useRef<HTMLInputElement>(null);
+
+  const openCreateCategory = () => {
+    setCategoryModalMode('create');
+    setCategoryForm({
+      id: '',
+      name: '',
+      label: '',
+      icon: '✨',
+      image: '/images/hero-abaya-pink.jpg',
+      sizesText: 'S, M, L, XL'
+    });
+    setIsCategoryModalOpen(true);
+  };
+
+  const openEditCategory = (cat: CategoryItem) => {
+    setCategoryModalMode('edit');
+    setCategoryForm({
+      id: cat.id,
+      name: cat.name,
+      label: cat.label || `${cat.name.toUpperCase()} · COLLECTION`,
+      icon: cat.icon || '✨',
+      image: cat.image || '/images/hero-abaya-pink.jpg',
+      sizesText: Array.isArray(cat.defaultSizes) && cat.defaultSizes.length ? cat.defaultSizes.join(', ') : 'Standard'
+    });
+    setIsCategoryModalOpen(true);
+  };
 
   // Order Filtering & Search
   const [orderSearch, setOrderSearch] = useState('');
@@ -552,29 +596,62 @@ export default function AdminPage() {
     window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  // Handle Category Creation
-  const handleCreateCategory = async (e: React.FormEvent) => {
+  // Handle Category Creation & Edition
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCatName.trim()) {
+    if (!categoryForm.name.trim()) {
       showToast('Veuillez renseigner le nom de la catégorie');
       return;
     }
     setIsSavingCategory(true);
-    const parsedSizes = newCatSizes
+    const parsedSizes = categoryForm.sizesText
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
 
-    await addCategory({
-      name: newCatName.trim(),
-      icon: newCatIcon || '✨',
-      defaultSizes: parsedSizes.length ? parsedSizes : ['Standard']
-    });
+    const catId = categoryForm.id || categoryForm.name.trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    const payload: CategoryItem = {
+      id: catId,
+      name: categoryForm.name.trim(),
+      label: categoryForm.label.trim() || `${categoryForm.name.trim().toUpperCase()} · COLLECTION`,
+      icon: categoryForm.icon || '✨',
+      image: categoryForm.image || '/images/hero-abaya-pink.jpg',
+      defaultSizes: parsedSizes.length ? parsedSizes : ['Standard'],
+      isDefault: false
+    };
+
+    if (categoryModalMode === 'edit') {
+      await updateCategory(payload);
+      showToast(`Catégorie "${payload.name}" mise à jour avec succès`);
+    } else {
+      await addCategory(payload);
+    }
 
     setIsSavingCategory(false);
-    setNewCatName('');
-    setNewCatSizes('');
     setIsCategoryModalOpen(false);
+  };
+
+  const handleQuickChangeCatImage = async (cat: CategoryItem, file: File) => {
+    if (!file) return;
+    try {
+      showToast(`Téléversement de l'image de référence pour "${cat.name}"...`);
+      await uploadVisualImage(file, async (url) => {
+        const updatedCat: CategoryItem = {
+          ...cat,
+          image: url
+        };
+        await updateCategory(updatedCat);
+        showToast(`Image de référence mise à jour pour "${cat.name}"`);
+      });
+    } catch {
+      showToast('Erreur lors du téléversement');
+    }
   };
 
   // Open Product Modal for Creation
@@ -1325,6 +1402,17 @@ export default function AdminPage() {
           </button>
 
           <button
+            className={`nav-item ${activeTab === 'categories' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('categories'); setSidebarOpen(false); }}
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Catégories
+            <span className="nav-badge">{categories.length}</span>
+          </button>
+
+          <button
             className={`nav-item ${activeTab === 'orders' ? 'active' : ''}`}
             onClick={() => { setActiveTab('orders'); setSidebarOpen(false); }}
           >
@@ -1430,6 +1518,7 @@ export default function AdminPage() {
             <h1 className="topbar-title">
               {activeTab === 'dashboard' && 'Tableau de bord exécutif'}
               {activeTab === 'products' && 'Gestion du catalogue produits'}
+              {activeTab === 'categories' && 'Gestion des Catégories & Visuels de Référence'}
               {activeTab === 'orders' && 'Commandes & Suivi livraisons'}
               {activeTab === 'homepage' && 'Personnalisation des visuels de l\'accueil'}
               {activeTab === 'settings' && 'Configuration de la boutique'}
@@ -1548,6 +1637,12 @@ export default function AdminPage() {
             {activeTab === 'products' && (
               <button onClick={openCreateProduct} className="btn btn-primary">
                 + Ajouter un produit
+              </button>
+            )}
+
+            {activeTab === 'categories' && (
+              <button onClick={openCreateCategory} className="btn btn-primary">
+                + Nouvelle Catégorie
               </button>
             )}
 
@@ -1899,7 +1994,7 @@ export default function AdminPage() {
 
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => setIsCategoryModalOpen(true)}
+                    onClick={() => setActiveTab('categories')}
                     className="btn btn-outline"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                     title="Ajouter ou gérer des catégories de produits"
@@ -2049,7 +2144,304 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 3: ORDERS */}
+                    {/* TAB 2.5: CATEGORIES */}
+          {activeTab === 'categories' && (
+            <div>
+              {/* Toolbar & Search */}
+              <div className="toolbar-card">
+                <div className="search-box">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Filtrer les catégories par nom, slug..."
+                    value={catSearch}
+                    onChange={e => setCatSearch(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button onClick={openCreateCategory} className="btn btn-primary">
+                    + Nouvelle Catégorie
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Summary Cards */}
+              <div className="kpi-grid" style={{ marginBottom: '24px' }}>
+                <div className="kpi-card">
+                  <div className="kpi-label">Catégories Actives</div>
+                  <div className="kpi-value" style={{ color: 'var(--pink)' }}>{categories.length}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Visibles dans la boutique & menus</div>
+                </div>
+
+                <div className="kpi-card">
+                  <div className="kpi-label">Produits Rattachés</div>
+                  <div className="kpi-value">{products.length}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Répartis sur l'ensemble des univers</div>
+                </div>
+
+                <div className="kpi-card">
+                  <div className="kpi-label">Images de Référence</div>
+                  <div className="kpi-value" style={{ color: '#2e7d32' }}>
+                    {categories.filter(c => c.image).length} / {categories.length}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Bannières & vignettes personnalisées</div>
+                </div>
+              </div>
+
+              {/* Categories Cards Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                  gap: '20px'
+                }}
+              >
+                {categories
+                  .filter(c => {
+                    if (!catSearch.trim()) return true;
+                    const q = catSearch.toLowerCase().trim();
+                    return (
+                      c.name.toLowerCase().includes(q) ||
+                      c.id.toLowerCase().includes(q) ||
+                      (c.label && c.label.toLowerCase().includes(q))
+                    );
+                  })
+                  .map(c => {
+                    const count = products.filter(p => (p.category || p.cat) === c.id).length;
+                    const catImg = c.image || (c.id === 'crocs' ? '/images/category-crocs.jpg' : '/images/category-abayas.jpg');
+                    return (
+                      <div
+                        key={c.id}
+                        className="panel-card"
+                        style={{
+                          padding: 0,
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          borderRadius: '16px',
+                          border: '1px solid var(--stroke-light)',
+                          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                        }}
+                      >
+                        {/* Reference Image Container */}
+                        <div
+                          style={{
+                            height: '190px',
+                            position: 'relative',
+                            background: '#f5eff2',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <img
+                            src={catImg}
+                            alt={c.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              display: 'block'
+                            }}
+                          />
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              background: 'linear-gradient(to top, rgba(18, 14, 16, 0.75) 0%, rgba(18, 14, 16, 0.1) 60%, transparent 100%)'
+                            }}
+                          />
+
+                          {/* Top Badges */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '12px',
+                              left: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              background: 'rgba(255, 255, 255, 0.92)',
+                              backdropFilter: 'blur(8px)',
+                              padding: '4px 10px',
+                              borderRadius: '100px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              color: '#120e10',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                            }}
+                          >
+                            <span>{c.icon || '🏷️'}</span>
+                            <span>{c.name}</span>
+                          </div>
+
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '12px',
+                              right: '12px',
+                              background: 'rgba(18, 14, 16, 0.75)',
+                              backdropFilter: 'blur(6px)',
+                              color: '#ffffff',
+                              padding: '4px 10px',
+                              borderRadius: '100px',
+                              fontSize: '11px',
+                              fontWeight: 600
+                            }}
+                          >
+                            {count} modèle{count > 1 ? 's' : ''}
+                          </div>
+
+                          {/* Quick Change Reference Image Button */}
+                          <div style={{ position: 'absolute', bottom: '12px', right: '12px' }}>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              id={`quick-cat-img-${c.id}`}
+                              style={{ display: 'none' }}
+                              onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (file) handleQuickChangeCatImage(c, file);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => document.getElementById(`quick-cat-img-${c.id}`)?.click()}
+                              className="btn btn-sm"
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.95)',
+                                color: '#120e10',
+                                border: 'none',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                padding: '5px 12px',
+                                borderRadius: '100px'
+                              }}
+                              title="Changer l'image de référence pour cette catégorie"
+                            >
+                              📷 Changer l'image
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Card Content */}
+                        <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                              <h3 style={{ margin: 0, fontSize: '17px', color: 'var(--ink)', fontWeight: 700 }}>
+                                {c.name}
+                              </h3>
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  background: '#fcf0f4',
+                                  color: 'var(--pink)',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {c.id}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>
+                              {c.label || `${c.name.toUpperCase()} · COLLECTION`}
+                            </div>
+                          </div>
+
+                          {/* Suggested sizes preview */}
+                          <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid var(--stroke-light)' }}>
+                            <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginBottom: '6px' }}>
+                              Tailles par défaut :
+                            </div>
+                            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                              {(c.defaultSizes || ['Standard']).map(s => (
+                                <span
+                                  key={s}
+                                  style={{
+                                    fontSize: '11px',
+                                    padding: '2px 7px',
+                                    borderRadius: '5px',
+                                    background: '#f5eff2',
+                                    color: 'var(--ink)'
+                                  }}
+                                >
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Actions Footer */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px',
+                              marginTop: '16px',
+                              paddingTop: '14px',
+                              borderTop: '1px solid var(--stroke-light)'
+                            }}
+                          >
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => openEditCategory(c)}
+                                className="btn btn-outline btn-sm"
+                                style={{ fontSize: '12px', padding: '6px 12px' }}
+                              >
+                                ✏️ Modifier
+                              </button>
+                              <Link
+                                href={`/boutique?categorie=${c.id}`}
+                                target="_blank"
+                                className="btn btn-outline btn-sm"
+                                style={{ fontSize: '12px', padding: '6px 10px' }}
+                                title="Voir cette collection dans la boutique publique"
+                              >
+                                👁️ Boutique
+                              </Link>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const confirmMsg = count > 0
+                                  ? `Voulez-vous vraiment supprimer la catégorie "${c.name}" ?\n\nElle contient actuellement ${count} produit(s). Ces produits ne figureront plus dans cette catégorie.`
+                                  : `Voulez-vous vraiment supprimer la catégorie "${c.name}" ?`;
+                                if (confirm(confirmMsg)) {
+                                  deleteCategory(c.id);
+                                }
+                              }}
+                              className="btn btn-danger btn-sm"
+                              style={{ fontSize: '12px', padding: '6px 10px' }}
+                              title="Supprimer la catégorie"
+                            >
+                              🗑️ Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {categories.length === 0 && (
+                <div className="panel-card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--muted)' }}>
+                  <p style={{ fontSize: '16px', margin: '0 0 16px' }}>Aucune catégorie configurée.</p>
+                  <button onClick={openCreateCategory} className="btn btn-primary">
+                    + Créer votre première catégorie
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+{/* TAB 3: ORDERS */}
           {activeTab === 'orders' && (
             <div>
               {/* Orders Toolbar */}
@@ -2985,7 +3377,7 @@ export default function AdminPage() {
                         <label className="form-label" style={{ margin: 0 }}>Catégorie *</label>
                         <button
                           type="button"
-                          onClick={() => setIsCategoryModalOpen(true)}
+                          onClick={() => setActiveTab('categories')}
                           style={{
                             background: 'none',
                             border: 'none',
@@ -3412,178 +3804,251 @@ export default function AdminPage() {
       )}
 
       {/* ==================== CATEGORIES MANAGEMENT MODAL ==================== */}
+      {/* CATEGORY MODAL (ADD & EDIT WITH REFERENCE IMAGE) */}
       {isCategoryModalOpen && (
         <div className="modal-overlay" onClick={() => setIsCategoryModalOpen(false)}>
-          <div className="modal-window" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-window" style={{ maxWidth: '640px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-top">
-              <h2>🏷️ Catégories de produits</h2>
+              <h2>
+                {categoryModalMode === 'create'
+                  ? '✨ Nouvelle Catégorie'
+                  : `✏️ Modifier la catégorie : ${categoryForm.name}`}
+              </h2>
               <button onClick={() => setIsCategoryModalOpen(false)} className="btn btn-outline btn-icon">
                 ✕
               </button>
             </div>
 
-            <div style={{ padding: '24px' }}>
-              {/* Existing Categories List */}
-              <div style={{ marginBottom: '24px' }}>
-                <label className="form-label" style={{ marginBottom: '10px' }}>
-                  Catégories existantes ({categories.length})
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
-                  {categories.map(c => {
-                    const count = products.filter(p => (p.category || p.cat) === c.id).length;
-                    return (
-                      <div
-                        key={c.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          borderRadius: '10px',
-                          background: '#fcf8fa',
-                          border: '1px solid var(--stroke-light)'
+            <form onSubmit={handleSaveCategory}>
+              <div style={{ padding: '24px' }}>
+                {/* Reference Image Section */}
+                <div style={{ marginBottom: '22px' }}>
+                  <label className="form-label" style={{ marginBottom: '8px' }}>
+                    Image de référence (Bannière & Vignette de la catégorie)
+                  </label>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '16px',
+                      alignItems: 'center',
+                      background: '#fcf8fa',
+                      border: '1.5px dashed rgba(235, 92, 142, 0.35)',
+                      borderRadius: '14px',
+                      padding: '14px'
+                    }}
+                  >
+                    {/* Live Preview */}
+                    <div
+                      style={{
+                        width: '130px',
+                        height: '95px',
+                        borderRadius: '10px',
+                        overflow: 'hidden',
+                        background: '#ede5e8',
+                        flexShrink: 0,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                      }}
+                    >
+                      <img
+                        src={categoryForm.image || '/images/hero-abaya-pink.jpg'}
+                        alt="Aperçu catégorie"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+
+                    {/* Image Controls */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={catModalFileInputRef}
+                        style={{ display: 'none' }}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setIsUploadingCatImg(true);
+                            uploadVisualImage(file, url => {
+                              setCategoryForm(prev => ({ ...prev, image: url }));
+                              setIsUploadingCatImg(false);
+                            });
+                          }
                         }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '20px' }}>{c.icon || '🏷️'}</span>
-                          <div>
-                            <strong style={{ fontSize: '13.5px', color: 'var(--ink)' }}>{c.name}</strong>
-                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                              ID: <code style={{ color: 'var(--pink)' }}>{c.id}</code> · {count} produit(s)
-                            </div>
-                          </div>
-                        </div>
+                      />
 
-                        <div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const confirmMsg = count > 0
-                                ? `Voulez-vous vraiment supprimer la catégorie "${c.name}" ?\n\nElle contient ${count} produit(s). Les produits resteront dans le catalogue mais n'auront plus cette catégorie affectée.`
-                                : `Voulez-vous vraiment supprimer la catégorie "${c.name}" ?`;
-                              if (confirm(confirmMsg)) {
-                                deleteCategory(c.id);
-                              }
-                            }}
-                            className="btn btn-danger btn-sm"
-                            style={{ padding: '5px 12px', fontSize: '12px' }}
-                          >
-                            Supprimer
-                          </button>
-                        </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => catModalFileInputRef.current?.click()}
+                          className="btn btn-primary btn-sm"
+                          disabled={isUploadingCatImg}
+                        >
+                          {isUploadingCatImg ? 'Téléversement...' : '📁 Choisir une photo'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setCategoryForm(prev => ({ ...prev, image: '/images/category-abayas.jpg' }))}
+                          className="btn btn-outline btn-sm"
+                        >
+                          Abayas
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCategoryForm(prev => ({ ...prev, image: '/images/category-crocs.jpg' }))}
+                          className="btn btn-outline btn-sm"
+                        >
+                          Crocs
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCategoryForm(prev => ({ ...prev, image: '/images/hero-abaya-pink.jpg' }))}
+                          className="btn btn-outline btn-sm"
+                        >
+                          Rose Élégant
+                        </button>
                       </div>
-                    );
-                  })}
+
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Ou collez une URL d'image directe..."
+                        value={categoryForm.image}
+                        onChange={e => setCategoryForm(prev => ({ ...prev, image: e.target.value }))}
+                        style={{ fontSize: '12px', padding: '6px 10px', height: '36px' }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Add New Category Form */}
-              <div style={{ borderTop: '1px solid var(--stroke-light)', paddingTop: '20px' }}>
-                <h4 style={{ margin: '0 0 14px', fontSize: '14.5px', color: 'var(--ink)' }}>
-                  ✨ Ajouter une nouvelle catégorie
-                </h4>
-
-                <form onSubmit={handleCreateCategory}>
-                  <div className="form-field full" style={{ marginBottom: '14px' }}>
+                {/* Form Fields Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                  <div className="form-field">
                     <label className="form-label">Nom de la catégorie *</label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="Ex: Robes de Soirée, Accessoires, Hijabs..."
-                      value={newCatName}
-                      onChange={e => setNewCatName(e.target.value)}
+                      placeholder="Ex: Robes de Soirée, Sacs, Sandales..."
+                      value={categoryForm.name}
+                      onChange={e => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
                       required
                     />
                   </div>
 
-                  {/* Icon / Emoji Selection */}
-                  <div className="form-field full" style={{ marginBottom: '14px' }}>
-                    <label className="form-label">Icône / Emoji</label>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      {['👗', '👡', '👜', '🧕', '✨', '💍', '🎀', '👒', '🌸', '👠', '💎'].map(emoji => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          onClick={() => setNewCatIcon(emoji)}
-                          style={{
-                            fontSize: '18px',
-                            padding: '6px 10px',
-                            borderRadius: '8px',
-                            border: newCatIcon === emoji ? '2px solid var(--pink)' : '1px solid var(--stroke)',
-                            background: newCatIcon === emoji ? '#fef4f7' : '#fff',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                      <input
-                        type="text"
-                        className="form-input"
-                        style={{ width: '60px', textAlign: 'center', padding: '6px' }}
-                        value={newCatIcon}
-                        onChange={e => setNewCatIcon(e.target.value)}
-                        placeholder="Autre"
-                        maxLength={4}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Suggested Sizes */}
-                  <div className="form-field full" style={{ marginBottom: '20px' }}>
-                    <label className="form-label">Tailles par défaut suggérées (séparées par une virgule)</label>
+                  <div className="form-field">
+                    <label className="form-label">Libellé de collection</label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="Ex: S, M, L, XL ou 36, 37, 38, 39 ou Taille Unique"
-                      value={newCatSizes}
-                      onChange={e => setNewCatSizes(e.target.value)}
+                      placeholder="Ex: SACS · COLLECTION HAUTE COUTURE"
+                      value={categoryForm.label}
+                      onChange={e => setCategoryForm(prev => ({ ...prev, label: e.target.value }))}
                     />
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--muted)', alignSelf: 'center' }}>Suggestions :</span>
-                      <button
-                        type="button"
-                        onClick={() => setNewCatSizes('S, M, L, XL')}
-                        style={{ fontSize: '10.5px', background: '#f5eff2', border: 'none', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
-                      >
-                        S, M, L, XL
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewCatSizes('36, 37, 38, 39, 40, 41')}
-                        style={{ fontSize: '10.5px', background: '#f5eff2', border: 'none', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
-                      >
-                        Pointures (36-41)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewCatSizes('Taille Unique')}
-                        style={{ fontSize: '10.5px', background: '#f5eff2', border: 'none', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
-                      >
-                        Taille Unique
-                      </button>
-                    </div>
                   </div>
+                </div>
 
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                {/* Emoji / Icon */}
+                <div className="form-field" style={{ marginBottom: '14px' }}>
+                  <label className="form-label">Icône / Emoji de la catégorie</label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {['👗', '👡', '👜', '🧕', '✨', '💍', '🎀', '👒', '🌸', '👠', '💎', '🏷️'].map(emoji => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setCategoryForm(prev => ({ ...prev, icon: emoji }))}
+                        style={{
+                          fontSize: '18px',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          border: categoryForm.icon === emoji ? '2px solid var(--pink)' : '1px solid var(--stroke)',
+                          background: categoryForm.icon === emoji ? '#fef4f7' : '#fff',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ width: '60px', textAlign: 'center', padding: '6px' }}
+                      value={categoryForm.icon}
+                      onChange={e => setCategoryForm(prev => ({ ...prev, icon: e.target.value }))}
+                      placeholder="Autre"
+                      maxLength={4}
+                    />
+                  </div>
+                </div>
+
+                {/* Default Sizes */}
+                <div className="form-field" style={{ marginBottom: '16px' }}>
+                  <label className="form-label">Tailles par défaut pour les futurs modèles</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Ex: S, M, L, XL ou 36, 37, 38, 39 ou Standard"
+                    value={categoryForm.sizesText}
+                    onChange={e => setCategoryForm(prev => ({ ...prev, sizesText: e.target.value }))}
+                  />
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--muted)', alignSelf: 'center' }}>Suggestions rapides :</span>
                     <button
                       type="button"
-                      className="btn btn-outline"
-                      onClick={() => setIsCategoryModalOpen(false)}
+                      onClick={() => setCategoryForm(prev => ({ ...prev, sizesText: 'S, M, L, XL' }))}
+                      style={{ fontSize: '10.5px', background: '#f5eff2', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer' }}
                     >
-                      Fermer
+                      Vêtements (S, M, L, XL)
                     </button>
                     <button
-                      type="submit"
-                      className="btn btn-primary"
-                      disabled={isSavingCategory}
+                      type="button"
+                      onClick={() => setCategoryForm(prev => ({ ...prev, sizesText: '36, 37, 38, 39, 40, 41' }))}
+                      style={{ fontSize: '10.5px', background: '#f5eff2', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer' }}
                     >
-                      {isSavingCategory ? 'Création...' : '+ Créer la catégorie'}
+                      Pointures (36-41)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryForm(prev => ({ ...prev, sizesText: 'Standard' }))}
+                      style={{ fontSize: '10.5px', background: '#f5eff2', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer' }}
+                    >
+                      Standard (Taille Unique)
                     </button>
                   </div>
-                </form>
+                </div>
               </div>
-            </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  justifyContent: 'flex-end',
+                  padding: '16px 24px',
+                  borderTop: '1px solid var(--stroke-light)',
+                  background: '#fcf8fa',
+                  borderRadius: '0 0 16px 16px'
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setIsCategoryModalOpen(false)}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSavingCategory || isUploadingCatImg}
+                >
+                  {isSavingCategory
+                    ? 'Enregistrement...'
+                    : categoryModalMode === 'create'
+                    ? '+ Créer la catégorie'
+                    : '💾 Enregistrer les modifications'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
