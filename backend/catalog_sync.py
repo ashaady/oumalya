@@ -131,6 +131,9 @@ def sync_db_to_supabase(db) -> bool:
             from backend.models import Product, Category, Setting
 
         # 1. Format all products
+        existing = get_catalog_from_supabase() or {}
+        cloud_products = existing.get("products", [])
+
         db_products = db.query(Product).order_by(Product.order_num.asc()).all()
         formatted_prods = []
         for p in db_products:
@@ -160,6 +163,12 @@ def sync_db_to_supabase(db) -> bool:
                 "image": p.image or p.img or "/images/hero-abaya-pink.jpg",
                 "order": p.order_num or 0
             })
+
+        # SAFETY GUARD: If DB has <= 4 products while Supabase has more, NEVER wipe Supabase products!
+        if len(formatted_prods) <= 4 and len(cloud_products) > len(formatted_prods):
+            final_products = cloud_products
+        else:
+            final_products = formatted_prods
 
         # 2. Format all categories
         db_categories = db.query(Category).order_by(Category.order_num.asc()).all()
@@ -191,7 +200,7 @@ def sync_db_to_supabase(db) -> bool:
             except Exception:
                 pass
 
-        return save_catalog_to_supabase(products=formatted_prods, categories=formatted_cats, homepage=home_data)
+        return save_catalog_to_supabase(products=final_products, categories=formatted_cats, homepage=home_data)
     except Exception as e:
         print(f"[Supabase Sync] sync_db_to_supabase error: {e}")
         return False

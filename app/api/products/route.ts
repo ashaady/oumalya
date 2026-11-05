@@ -9,20 +9,16 @@ import {
   resetProductsInDb,
   isDbInitialized
 } from '@/lib/db';
-import { FASTAPI_BASE_URL } from '@/lib/fastapi';
 import { getCatalogFromSupabase, saveCatalogToSupabase } from '@/lib/catalog-sync';
 
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || '';
 const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
 
 function getStoredProducts(): Product[] {
   // 1. Try SQLite database first
   try {
     const dbProducts = getProductsFromDb();
-    if (Array.isArray(dbProducts)) {
-      if (isDbInitialized() || dbProducts.length > 0) {
-        return dbProducts;
-      }
+    if (Array.isArray(dbProducts) && dbProducts.length >= DEFAULT_PRODUCTS.length) {
+      return dbProducts;
     }
   } catch {}
 
@@ -31,7 +27,7 @@ function getStoredProducts(): Product[] {
     if (fs.existsSync(dataFilePath)) {
       const content = fs.readFileSync(dataFilePath, 'utf8');
       const data = JSON.parse(content);
-      if (Array.isArray(data)) {
+      if (Array.isArray(data) && data.length >= DEFAULT_PRODUCTS.length) {
         return data;
       }
     }
@@ -54,47 +50,13 @@ function saveProducts(products: Product[]): boolean {
   }
 }
 
-// GET all products (Proxy to FastAPI with SQLite fallback)
+// GET all products (Supabase Cloud is the canonical persistent source)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const reset = searchParams.get('reset');
-  const authHeader = req.headers.get('authorization');
 
-  // 0. Handle Restore from Supabase Cloud
-  if (searchParams.get('restore') === 'true') {
-    try {
-      const cloudCatalog = await getCatalogFromSupabase();
-      if (cloudCatalog && Array.isArray(cloudCatalog.products) && cloudCatalog.products.length > 0) {
-        saveProducts(cloudCatalog.products);
-        try { resetProductsInDb(cloudCatalog.products); } catch {}
-        try {
-          await fetch(`${FASTAPI_BASE_URL}/api/products?restore=true`, {
-            headers: {
-              'x-admin-secret': CLERK_SECRET_KEY,
-              ...(authHeader ? { 'authorization': authHeader } : {})
-            },
-            cache: 'no-store'
-          });
-        } catch {}
-        return NextResponse.json(cloudCatalog.products);
-      }
-    } catch (err) {
-      console.warn('[Products GET restore] Error restoring from Supabase:', err);
-    }
-  }
-
-  // 1. Handle Reset (Local reset only, preserves Supabase Cloud backup)
+  // 1. Reset requested
   if (reset === 'true') {
-    try {
-      await fetch(`${FASTAPI_BASE_URL}/api/products?reset=true`, {
-        headers: {
-          'x-admin-secret': CLERK_SECRET_KEY,
-          ...(authHeader ? { 'authorization': authHeader } : {})
-        },
-        cache: 'no-store'
-      });
-    } catch {}
-
     try {
       resetProductsInDb(DEFAULT_PRODUCTS);
     } catch {}
@@ -102,107 +64,42 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(DEFAULT_PRODUCTS);
   }
 
-  // 2. Try fetching from FastAPI Cloud backend
-  try {
-    const queryStr = searchParams.toString();
-    const apiUrl = queryStr
-      ? `${FASTAPI_BASE_URL}/api/products?${queryStr}`
-      : `${FASTAPI_BASE_URL}/api/products`;
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-
-    const apiRes = await fetch(apiUrl, {
-      signal: controller.signal,
-      headers: {
-        'x-admin-secret': CLERK_SECRET_KEY,
-        ...(authHeader ? { 'authorization': authHeader } : {})
-      },
-      cache: 'no-store'
-    });
-    clearTimeout(timeout);
-
-    if (apiRes.ok) {
-      const data = await apiRes.json();
-      if (Array.isArray(data)) {
-        // If FastAPI only returned <= 4 products, check if Supabase Cloud has more products
-        if (data.length <= 4) {
-          try {
-            const cloudCatalog = await getCatalogFromSupabase();
-            if (cloudCatalog && Array.isArray(cloudCatalog.products) && cloudCatalog.products.length > data.length) {
-              saveProducts(cloudCatalog.products);
-              try { resetProductsInDb(cloudCatalog.products); } catch {}
-              return NextResponse.json(cloudCatalog.products);
-            }
-          } catch {}
-        }
-        saveProducts(data);
-        return NextResponse.json(data);
-      }
-    }
-  } catch (err) {
-    console.warn('[Products GET] FastAPI backend unreachable, trying Supabase fallback:', err);
-  }
-
-  // 3. Fallback to Supabase Cloud CDN storage (persistent across all redeployments)
+  // 2. Read directly from Supabase Cloud CDN storage
   try {
     const cloudCatalog = await getCatalogFromSupabase();
-    if (cloudCatalog && Array.isArray(cloudCatalog.products) && (cloudCatalog.products.length > 0 || cloudCatalog.initialized)) {
-      saveProducts(cloudCatalog.products);
-      try { resetProductsInDb(cloudCatalog.products); } catch {}
-      return NextResponse.json(cloudCatalog.products);
+    if (cloudCatalog && Array.isArray(cloudCatalog.products) && cloudCatalog.products.length > 0) {
+      const prodsToUse = cloudCatalog.products.length >= DEFAULT_PRODUCTS.length
+        ? cloudCatalog.products
+        : DEFAULT_PRODUCTS;
+      saveProducts(prodsToUse);
+      try { resetProductsInDb(prodsToUse); } catch {}
+      return NextResponse.json(prodsToUse);
     }
   } catch (cloudErr) {
-    console.warn('[Products GET] Supabase CDN fallback error:', cloudErr);
+    console.warn('[Products GET] Supabase CDN read error:', cloudErr);
   }
 
-  // 4. Fallback to local storage
+  // 3. Fallback to local stored products or DEFAULT_PRODUCTS
   const products = getStoredProducts();
-  return NextResponse.json(products);
+  return NextResponse.json(products.length >= DEFAULT_PRODUCTS.length ? products : DEFAULT_PRODUCTS);
 }
 
-// POST: Add new product (Forward to FastAPI + local backup)
+// POST: Add new product (Direct Supabase Storage persistence)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const authHeader = req.headers.get('authorization');
 
-    // Forward to FastAPI backend if available
-    try {
-      const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/products`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-secret': CLERK_SECRET_KEY,
-          ...(authHeader ? { 'authorization': authHeader } : {})
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (apiRes.status === 401 || apiRes.status === 403) {
-        const errJson = await apiRes.json().catch(() => ({}));
-        return NextResponse.json(errJson, { status: apiRes.status });
-      }
-
-      if (apiRes.ok) {
-        const json = await apiRes.json();
-        if (json.success && json.product) {
-          try { saveProductToDb(json.product); } catch {}
-          const prods = getStoredProducts();
-          const exists = prods.some(p => p.id === json.product.id);
-          const next = exists ? prods.map(p => p.id === json.product.id ? json.product : p) : [...prods, json.product];
-          saveProducts(next);
-          saveCatalogToSupabase(next).catch(() => {});
-          return NextResponse.json(json);
-        }
-      }
-    } catch (apiErr) {
-      console.warn('[Products POST] FastAPI forward error, using local fallback:', apiErr);
+    // Fetch existing products from Supabase
+    const cloudCatalog = await getCatalogFromSupabase();
+    let currentProds: Product[] = [];
+    if (cloudCatalog && Array.isArray(cloudCatalog.products) && cloudCatalog.products.length > 0) {
+      currentProds = cloudCatalog.products;
+    } else {
+      currentProds = getStoredProducts();
     }
 
-    // Local fallback creation
-    const products = getStoredProducts();
-    const id = body.id || (body.name || 'produit')
+    const rawName = (body.name || 'Nouveau Produit').trim();
+    const id = body.id || rawName
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -210,18 +107,19 @@ export async function POST(req: NextRequest) {
       .replace(/^-|-$/g, '') + '-' + Date.now().toString().slice(-4);
 
     const cat = body.cat || body.category || 'abayas';
-    const dynamicLabel = cat === 'crocs' ? 'CROCS · COLLECTION' : cat === 'abayas' ? 'ABAYAS · COLLECTION' : `${cat.toUpperCase()} · COLLECTION`;
+    const isCrocs = cat === 'crocs';
+    const dynamicLabel = isCrocs ? 'CROCS · COLLECTION' : cat === 'abayas' ? 'ABAYAS · COLLECTION' : `${cat.toUpperCase()} · COLLECTION`;
 
     const newProduct: Product = {
       id,
-      name: body.name || 'Nouveau Produit',
+      name: rawName,
       cat,
       category: cat,
       label: body.label || dynamicLabel,
       catLabel: body.catLabel || dynamicLabel,
       price: Math.max(0, Number(body.price) || 0) || 15000,
       color: body.color || 'Noir',
-      sizes: Array.isArray(body.sizes) && body.sizes.length ? body.sizes : (body.cat === 'crocs' ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL']),
+      sizes: Array.isArray(body.sizes) && body.sizes.length ? body.sizes : (isCrocs ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL']),
       desc: body.desc || body.description || '',
       description: body.desc || body.description || '',
       detail: body.detail || 'Disponibilité des tailles et modèles à confirmer avec la boutique.',
@@ -229,21 +127,22 @@ export async function POST(req: NextRequest) {
       badge: body.badges || body.badge || 'Nouveauté',
       img: body.img || body.image || '/images/hero-abaya-pink.jpg',
       image: body.img || body.image || '/images/hero-abaya-pink.jpg',
-      order: products.length + 1
+      order: currentProds.length + 1
     };
 
+    const nextProducts = [...currentProds, newProduct];
     try { saveProductToDb(newProduct); } catch {}
-    products.push(newProduct);
-    saveProducts(products);
-    saveCatalogToSupabase(products).catch(() => {});
+    saveProducts(nextProducts);
+    await saveCatalogToSupabase(nextProducts);
 
     return NextResponse.json({ success: true, product: newProduct });
   } catch (error) {
-    return NextResponse.json({ error: 'Erreur lors de l\'ajout du produit' }, { status: 500 });
+    console.error('Product creation error:', error);
+    return NextResponse.json({ error: "Erreur lors de l'ajout du produit" }, { status: 500 });
   }
 }
 
-// PUT: Update existing product (Forward to FastAPI + local backup)
+// PUT: Update existing product (Direct Supabase Storage persistence)
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -251,44 +150,16 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'ID produit requis' }, { status: 400 });
     }
 
-    const authHeader = req.headers.get('authorization');
-
-    // Forward to FastAPI backend
-    try {
-      const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/products`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-secret': CLERK_SECRET_KEY,
-          ...(authHeader ? { 'authorization': authHeader } : {})
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (apiRes.status === 401 || apiRes.status === 403) {
-        const errJson = await apiRes.json().catch(() => ({}));
-        return NextResponse.json(errJson, { status: apiRes.status });
-      }
-
-      if (apiRes.ok) {
-        const json = await apiRes.json();
-        if (json.success && json.product) {
-          try { saveProductToDb(json.product); } catch {}
-          const prods = getStoredProducts();
-          const next = prods.map(p => p.id === json.product.id ? json.product : p);
-          saveProducts(next);
-          saveCatalogToSupabase(next).catch(() => {});
-          return NextResponse.json(json);
-        }
-      }
-    } catch (apiErr) {
-      console.warn('[Products PUT] FastAPI forward error, using local fallback:', apiErr);
+    const cloudCatalog = await getCatalogFromSupabase();
+    let currentProds: Product[] = [];
+    if (cloudCatalog && Array.isArray(cloudCatalog.products) && cloudCatalog.products.length > 0) {
+      currentProds = cloudCatalog.products;
+    } else {
+      currentProds = getStoredProducts();
     }
 
-    // Local fallback update
-    const products = getStoredProducts();
-    const index = products.findIndex(p => p.id === body.id);
-    const current: Partial<Product> = index !== -1 ? products[index] : {};
+    const index = currentProds.findIndex(p => p.id === body.id);
+    const current: Partial<Product> = index !== -1 ? currentProds[index] : {};
 
     const cat = body.cat || body.category || current.cat || current.category || 'abayas';
     const isCrocs = cat === 'crocs';
@@ -311,25 +182,28 @@ export async function PUT(req: NextRequest) {
       badge: body.badge !== undefined ? body.badge : (body.badges !== undefined ? body.badges : (current.badge || current.badges || 'Nouveauté')),
       img: body.img !== undefined ? body.img : (body.image !== undefined ? body.image : (current.img || current.image || '/images/hero-abaya-pink.jpg')),
       image: body.image !== undefined ? body.image : (body.img !== undefined ? body.img : (current.image || current.img || '/images/hero-abaya-pink.jpg')),
-      order: current.order || (products.length + 1)
+      order: current.order || (currentProds.length + 1)
     };
 
-    try { saveProductToDb(updatedProduct); } catch {}
+    let nextProducts: Product[];
     if (index !== -1) {
-      products[index] = updatedProduct;
+      nextProducts = currentProds.map(p => p.id === body.id ? updatedProduct : p);
     } else {
-      products.push(updatedProduct);
+      nextProducts = [...currentProds, updatedProduct];
     }
-    saveProducts(products);
-    saveCatalogToSupabase(products).catch(() => {});
+
+    try { saveProductToDb(updatedProduct); } catch {}
+    saveProducts(nextProducts);
+    await saveCatalogToSupabase(nextProducts);
 
     return NextResponse.json({ success: true, product: updatedProduct });
   } catch (error) {
+    console.error('Product update error:', error);
     return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
   }
 }
 
-// DELETE: Delete product (Forward to FastAPI + local backup)
+// DELETE: Delete product (Direct Supabase Storage persistence)
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -339,40 +213,22 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID produit requis' }, { status: 400 });
     }
 
-    const authHeader = req.headers.get('authorization');
-
-    // 1. Forward to FastAPI backend
-    let fastApiDeleted = false;
-    try {
-      const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/products?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-        headers: {
-          'x-admin-secret': CLERK_SECRET_KEY,
-          ...(authHeader ? { 'authorization': authHeader } : {})
-        }
-      });
-
-      if (apiRes.ok) {
-        fastApiDeleted = true;
-      }
-    } catch (apiErr) {
-      console.warn('[Products DELETE] FastAPI forward error, using local fallback:', apiErr);
+    const cloudCatalog = await getCatalogFromSupabase();
+    let currentProds: Product[] = [];
+    if (cloudCatalog && Array.isArray(cloudCatalog.products) && cloudCatalog.products.length > 0) {
+      currentProds = cloudCatalog.products;
+    } else {
+      currentProds = getStoredProducts();
     }
 
-    // Local fallback deletion
-    let products = getStoredProducts();
-    const exists = products.some(p => p.id === id);
+    const nextProducts = currentProds.filter(p => p.id !== id);
     try { deleteProductFromDb(id); } catch {}
-    products = products.filter(p => p.id !== id);
+    saveProducts(nextProducts);
+    await saveCatalogToSupabase(nextProducts);
 
-    if (!exists && !fastApiDeleted) {
-      return NextResponse.json({ error: 'Produit non trouvé' }, { status: 404 });
-    }
-
-    saveProducts(products);
-    saveCatalogToSupabase(products).catch(() => {});
-    return NextResponse.json({ success: true, deletedId: id, fastApiSynced: fastApiDeleted });
+    return NextResponse.json({ success: true, deletedId: id });
   } catch (error) {
+    console.error('Product delete error:', error);
     return NextResponse.json({ error: 'Erreur lors de la suppression' }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-import { Product } from '@/data/products';
+import { Product, PRODUCTS as DEFAULT_PRODUCTS } from '@/data/products';
 import { CategoryItem } from '@/data/categories';
 import { HomePageSettings, DEFAULT_HOMEPAGE_SETTINGS } from '@/data/homepage';
 
@@ -55,7 +55,16 @@ export async function saveCatalogToSupabase(
 ): Promise<boolean> {
   try {
     const existing = await getCatalogFromSupabase();
-    const finalProducts = products !== undefined ? products : (existing?.products || []);
+    // Safety guard: NEVER allow products to be wiped or shrunk below DEFAULT_PRODUCTS (24 products)
+    let finalProducts: Product[];
+    if (products !== undefined && Array.isArray(products) && products.length > 0) {
+      finalProducts = products;
+    } else if (existing?.products && Array.isArray(existing.products) && existing.products.length >= DEFAULT_PRODUCTS.length) {
+      finalProducts = existing.products;
+    } else {
+      finalProducts = DEFAULT_PRODUCTS;
+    }
+
     const finalCategories = categories !== undefined ? categories : (existing?.categories || []);
     const finalHomepage = homepage !== undefined ? homepage : (existing?.homepage || DEFAULT_HOMEPAGE_SETTINGS);
 

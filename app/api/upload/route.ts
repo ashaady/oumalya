@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import { saveImageToDb } from '@/lib/db';
-import { FASTAPI_BASE_URL } from '@/lib/fastapi';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jufenigdvmpjwguyjwqw.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
+const BUCKET_NAME = 'oumalya-images';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,65 +13,62 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Aucun fichier reçu' }, { status: 400 });
     }
 
-    const authHeader = req.headers.get('authorization');
-
-    // 1. Forward directly to FastAPI Cloud (which uploads to Supabase CDN bucket)
-    try {
-      const forwardData = new FormData();
-      forwardData.append('file', file);
-
-      const apiRes = await fetch(`${FASTAPI_BASE_URL}/api/upload`, {
-        method: 'POST',
-        headers: {
-          ...(authHeader ? { 'authorization': authHeader } : {})
-        },
-        body: forwardData
-      });
-
-      if (apiRes.status === 401 || apiRes.status === 403) {
-        const errJson = await apiRes.json().catch(() => ({}));
-        return NextResponse.json(errJson, { status: apiRes.status });
-      }
-
-      if (apiRes.ok) {
-        const json = await apiRes.json();
-        if (json.success && json.url) {
-          return NextResponse.json(json);
-        }
-      }
-    } catch (apiErr) {
-      console.warn('[Upload POST] FastAPI forward error, using local fallback:', apiErr);
-    }
-
-    // 2. Local fallback: Save into SQLite Database
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const originalName = file.name || 'image.jpg';
     const mimeType = file.type || 'image/jpeg';
 
-    const imageMeta = saveImageToDb(originalName, mimeType, buffer);
+    const ext = originalName.includes('.') ? originalName.slice(originalName.lastIndexOf('.')).toLowerCase() : '.jpg';
+    const baseName = originalName.slice(0, originalName.lastIndexOf('.')) || 'img';
+    const cleanBase = baseName.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 30) || 'img';
+    const cleanFilename = `${cleanBase}-${Date.now()}${ext}`;
 
-    try {
-      const uploadDir = path.join(process.cwd(), 'public', 'images', 'uploads');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+    // 1. Upload DIRECTLY to Supabase Storage Bucket (oumalya-images)
+    if (SUPABASE_KEY) {
+      try {
+        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${cleanFilename}`;
+        const res = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'apikey': SUPABASE_KEY,
+            'Content-Type': mimeType,
+            'x-upsert': 'true'
+          },
+          body: buffer
+        });
+
+        if (res.ok) {
+          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${cleanFilename}`;
+          return NextResponse.json({
+            success: true,
+            url: publicUrl,
+            filename: cleanFilename,
+            size: buffer.length,
+            storage: 'supabase'
+          });
+        } else {
+          const errText = await res.text();
+          console.warn('[Direct Supabase Upload] HTTP error:', res.status, errText);
+        }
+      } catch (sbErr) {
+        console.warn('[Direct Supabase Upload] Exception:', sbErr);
       }
-      const filePath = path.join(uploadDir, imageMeta.filename);
-      fs.writeFileSync(filePath, buffer);
-    } catch (diskErr) {
-      console.warn('Backup disk write warning:', diskErr);
     }
+
+    // 2. Base64 Data URL fallback (guarantees preview & persistence even if storage is offline)
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
     return NextResponse.json({
       success: true,
-      url: imageMeta.url,
-      id: imageMeta.id,
-      filename: imageMeta.filename,
-      size: imageMeta.size,
-      sqlite: true
+      url: dataUrl,
+      filename: cleanFilename,
+      size: buffer.length,
+      storage: 'inline'
     });
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Erreur lors du traitement de l\'image' }, { status: 500 });
+    return NextResponse.json({ error: "Erreur lors du traitement de l'image" }, { status: 500 });
   }
 }
