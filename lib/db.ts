@@ -51,7 +51,10 @@ function initDbConnection(): Database.Database {
       );
       CREATE INDEX IF NOT EXISTS idx_images_created ON images(created_at DESC);
 
-      CREATE TABLE IF NOT EXISTS products (
+      /* Migration for multiple images */
+    try { db.exec('ALTER TABLE products ADD COLUMN images TEXT'); } catch {}
+
+    CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         cat TEXT NOT NULL,
@@ -267,6 +270,7 @@ export function getProductsFromDb(): Product[] {
         badge: r.badge || r.badges || 'Nouveauté',
         img: r.img || r.image || '/images/hero-abaya-pink.jpg',
         image: r.image || r.img || '/images/hero-abaya-pink.jpg',
+        images: r.images ? (() => { try { return JSON.parse(r.images); } catch { return [r.img || r.image]; } })() : [r.img || r.image || '/images/hero-abaya-pink.jpg'],
         order: r.order_num || 0
       }));
     }
@@ -280,8 +284,8 @@ export function saveProductToDb(p: Product): Product {
   try {
     const db = getDb();
     const stmt = db.prepare(`
-      INSERT OR REPLACE INTO products (id, name, cat, category, label, catLabel, price, color, sizes, desc, description, detail, badges, badge, img, image, order_num, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO products (id, name, cat, category, label, catLabel, price, color, sizes, desc, description, detail, badges, badge, img, image, images, order_num, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       p.id,
@@ -300,6 +304,7 @@ export function saveProductToDb(p: Product): Product {
       p.badge || p.badges || '',
       p.img || p.image || '',
       p.image || p.img || '',
+      JSON.stringify(Array.isArray(p.images) && p.images.length > 0 ? p.images : [p.img || p.image || '/images/hero-abaya-pink.jpg']),
       p.order || 0,
       new Date().toISOString()
     );

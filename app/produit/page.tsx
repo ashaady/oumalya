@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SubpageLayout from '@/components/SubpageLayout';
 import { useCart } from '@/context/CartContext';
-import { PRODUCTS, PRODUCTS_BY_ID, formatPrice } from '@/data/products';
+import { PRODUCTS, PRODUCTS_BY_ID, formatPrice, getProductImages } from '@/data/products';
 
 function ProductContent() {
   const router = useRouter();
@@ -16,6 +16,7 @@ function ProductContent() {
 
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [qty, setQty] = useState<number>(1);
+  const [activeImgIndex, setActiveImgIndex] = useState<number>(0);
 
   if (!p) {
     return (
@@ -55,15 +56,131 @@ function ProductContent() {
         {/* Product Layout */}
         <div className="product-layout">
           <div>
-            <div className="gallery-main">
-              <img id="productImage" alt={p.name} src={p.img} />
-              <span className="gallery-tag" id="productBadge">{p.badges}</span>
-            </div>
-            <div className="thumbs">
-              <button className="thumb selected" type="button" aria-label="Photo du produit">
-                <img id="productThumbnail" src={p.img} alt="Aperçu de la photo" />
-              </button>
-            </div>
+            {(() => {
+              const productImages = getProductImages(p);
+              const hasMultiple = productImages.length > 1;
+              const activeImg = productImages[activeImgIndex] || p.img;
+
+              return (
+                <>
+                  <div className="gallery-main" style={{ position: 'relative', overflow: 'hidden' }}>
+                    <img id="productImage" alt={p.name} src={activeImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <span className="gallery-tag" id="productBadge">{p.badges}</span>
+
+                    {hasMultiple && (
+                      <>
+                        {/* Flèche Gauche */}
+                        <button
+                          type="button"
+                          aria-label="Photo précédente"
+                          onClick={() => setActiveImgIndex(prev => (prev > 0 ? prev - 1 : productImages.length - 1))}
+                          style={{
+                            position: 'absolute',
+                            left: '14px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 255, 255, 0.94)',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
+                            border: '1.5px solid rgba(235, 92, 142, 0.35)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            fontSize: '26px',
+                            lineHeight: 1,
+                            color: '#120e10',
+                            zIndex: 4,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          ‹
+                        </button>
+
+                        {/* Flèche Droite */}
+                        <button
+                          type="button"
+                          aria-label="Photo suivante"
+                          onClick={() => setActiveImgIndex(prev => (prev < productImages.length - 1 ? prev + 1 : 0))}
+                          style={{
+                            position: 'absolute',
+                            right: '14px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 255, 255, 0.94)',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
+                            border: '1.5px solid rgba(235, 92, 142, 0.35)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            fontSize: '26px',
+                            lineHeight: 1,
+                            color: '#120e10',
+                            zIndex: 4,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          ›
+                        </button>
+
+                        {/* Compteur */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '14px',
+                            left: '14px',
+                            background: 'rgba(18, 14, 16, 0.72)',
+                            color: '#ffffff',
+                            padding: '4px 10px',
+                            borderRadius: '100px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            backdropFilter: 'blur(6px)',
+                            zIndex: 3
+                          }}
+                        >
+                          {activeImgIndex + 1} / {productImages.length}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Vignettes (Thumbs) */}
+                  <div className="thumbs" style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    {productImages.map((imgUrl, idx) => (
+                      <button
+                        key={idx}
+                        className={`thumb ${activeImgIndex === idx ? 'selected' : ''}`}
+                        type="button"
+                        aria-label={`Photo ${idx + 1}`}
+                        onClick={() => setActiveImgIndex(idx)}
+                        style={{
+                          border: activeImgIndex === idx ? '2px solid var(--pink)' : '1px solid #ede5e8',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          padding: 0,
+                          width: '68px',
+                          height: '68px',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          background: '#fcf8fa',
+                          boxShadow: activeImgIndex === idx ? '0 0 0 2px rgba(235, 92, 142, 0.25)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <img src={imgUrl} alt={`Aperçu ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
             <p style={{ fontSize: '10px', color: '#ae9fa3', marginTop: '12px' }}>
               Visuel indicatif · Référence à confirmer avant achat
             </p>

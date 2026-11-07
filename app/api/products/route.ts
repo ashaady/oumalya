@@ -71,7 +71,12 @@ export async function GET(req: NextRequest) {
       const prodsToUse = cloudCatalog.products.length >= DEFAULT_PRODUCTS.length
         ? cloudCatalog.products
         : DEFAULT_PRODUCTS;
-      saveProducts(prodsToUse);
+      const normalizedProds = prodsToUse.map(p => ({
+        ...p,
+        images: Array.isArray(p.images) && p.images.length > 0 ? p.images : [p.img || p.image || '/images/hero-abaya-pink.jpg']
+      }));
+      saveProducts(normalizedProds);
+      return NextResponse.json(normalizedProds);
       try { resetProductsInDb(prodsToUse); } catch {}
       return NextResponse.json(prodsToUse);
     }
@@ -110,6 +115,11 @@ export async function POST(req: NextRequest) {
     const isCrocs = cat === 'crocs';
     const dynamicLabel = isCrocs ? 'CROCS · COLLECTION' : cat === 'abayas' ? 'ABAYAS · COLLECTION' : `${cat.toUpperCase()} · COLLECTION`;
 
+    const rawImages = Array.isArray(body.images) && body.images.length > 0
+      ? body.images.filter((x: any) => typeof x === 'string' && x.trim())
+      : [body.img || body.image || '/images/hero-abaya-pink.jpg'];
+    const mainImg = rawImages[0] || '/images/hero-abaya-pink.jpg';
+
     const newProduct: Product = {
       id,
       name: rawName,
@@ -125,8 +135,9 @@ export async function POST(req: NextRequest) {
       detail: body.detail || 'Disponibilité des tailles et modèles à confirmer avec la boutique.',
       badges: body.badges || body.badge || 'Nouveauté',
       badge: body.badges || body.badge || 'Nouveauté',
-      img: body.img || body.image || '/images/hero-abaya-pink.jpg',
-      image: body.img || body.image || '/images/hero-abaya-pink.jpg',
+      img: mainImg,
+      image: mainImg,
+      images: rawImages,
       order: currentProds.length + 1
     };
 
@@ -180,8 +191,9 @@ export async function PUT(req: NextRequest) {
       detail: body.detail !== undefined ? body.detail : (current.detail || 'Disponibilité à confirmer avec la boutique.'),
       badges: body.badges !== undefined ? body.badges : (body.badge !== undefined ? body.badge : (current.badges || current.badge || 'Nouveauté')),
       badge: body.badge !== undefined ? body.badge : (body.badges !== undefined ? body.badges : (current.badge || current.badges || 'Nouveauté')),
-      img: body.img !== undefined ? body.img : (body.image !== undefined ? body.image : (current.img || current.image || '/images/hero-abaya-pink.jpg')),
-      image: body.image !== undefined ? body.image : (body.img !== undefined ? body.img : (current.image || current.img || '/images/hero-abaya-pink.jpg')),
+      img: Array.isArray(body.images) && body.images.length > 0 ? body.images[0] : (body.img !== undefined ? body.img : (body.image !== undefined ? body.image : (current.img || current.image || '/images/hero-abaya-pink.jpg'))),
+      image: Array.isArray(body.images) && body.images.length > 0 ? body.images[0] : (body.image !== undefined ? body.image : (body.img !== undefined ? body.img : (current.image || current.img || '/images/hero-abaya-pink.jpg'))),
+      images: Array.isArray(body.images) && body.images.length > 0 ? body.images : (current.images || [body.img || body.image || current.img || current.image || '/images/hero-abaya-pink.jpg']),
       order: current.order || (currentProds.length + 1)
     };
 

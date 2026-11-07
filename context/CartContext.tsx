@@ -415,8 +415,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               catLabel: data.catLabel || (isCrocs ? 'CROCS · COLLECTION' : 'ABAYAS · COLLECTION'),
               color: data.color !== undefined ? data.color : (p.color || 'Noir'),
               sizes: data.sizes !== undefined ? data.sizes : (p.sizes || (isCrocs ? ['36', '37', '38', '39', '40'] : ['S', 'M', 'L', 'XL'])),
-              img: data.img || data.image || p.img || p.image,
-              image: data.image || data.img || p.image || p.img
+              img: Array.isArray(data.images) && data.images.length > 0 ? data.images[0] : (data.img || data.image || p.img || p.image),
+              image: Array.isArray(data.images) && data.images.length > 0 ? data.images[0] : (data.image || data.img || p.image || p.img),
+              images: Array.isArray(data.images) && data.images.length > 0 ? data.images : (p.images || [data.img || data.image || p.img || p.image])
             };
             updatedLocalProduct = merged;
             return merged;

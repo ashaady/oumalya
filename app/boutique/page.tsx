@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
-import { PRODUCTS, Product, formatPrice } from '@/data/products';
+import { PRODUCTS, Product, formatPrice, getProductImages } from '@/data/products';
 
 function BoutiqueContent() {
   const router = useRouter();
@@ -35,6 +35,7 @@ function BoutiqueContent() {
 
   // Quick view modal state
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
+  const [modalImgIndex, setModalImgIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   // Sync category with URL search param (?categorie=...)
@@ -87,11 +88,13 @@ function BoutiqueContent() {
 
   const openQuick = (p: Product) => {
     setModalProduct(p);
+    setModalImgIndex(0);
     setSelectedSize(null);
   };
 
   const closeQuick = () => {
     setModalProduct(null);
+    setModalImgIndex(0);
     setSelectedSize(null);
   };
 
@@ -113,6 +116,16 @@ function BoutiqueContent() {
         closeCart();
         closeQuick();
         setMenuOpen(false);
+      }
+      if (modalProduct) {
+        const imgs = getProductImages(modalProduct);
+        if (imgs.length > 1) {
+          if (e.key === 'ArrowLeft') {
+            setModalImgIndex(prev => (prev > 0 ? prev - 1 : imgs.length - 1));
+          } else if (e.key === 'ArrowRight') {
+            setModalImgIndex(prev => (prev < imgs.length - 1 ? prev + 1 : 0));
+          }
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -568,8 +581,152 @@ function BoutiqueContent() {
             <button aria-label="Fermer l'aperçu" className="modal-close" id="closeModal" onClick={closeQuick}>
               <svg><use href="#ico-close"></use></svg>
             </button>
-            <div className="modal-figure">
-              <img id="modalImage" src={modalProduct.img} alt={modalProduct.name} />
+            <div className="modal-figure" style={{ position: 'relative', overflow: 'hidden', background: '#f8f5f6' }}>
+              {(() => {
+                const modalImages = getProductImages(modalProduct);
+                const hasMultiple = modalImages.length > 1;
+                const activeImg = modalImages[modalImgIndex] || modalProduct.img;
+
+                return (
+                  <>
+                    <img
+                      id="modalImage"
+                      src={activeImg}
+                      alt={modalProduct.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'opacity 0.2s ease' }}
+                    />
+
+                    {hasMultiple && (
+                      <>
+                        {/* Flèche Gauche */}
+                        <button
+                          type="button"
+                          aria-label="Photo précédente"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModalImgIndex(prev => (prev > 0 ? prev - 1 : modalImages.length - 1));
+                          }}
+                          style={{
+                            position: 'absolute',
+                            left: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 255, 255, 0.94)',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
+                            border: '1.5px solid rgba(235, 92, 142, 0.35)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            fontSize: '24px',
+                            lineHeight: 1,
+                            color: '#120e10',
+                            zIndex: 4,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          ‹
+                        </button>
+
+                        {/* Flèche Droite */}
+                        <button
+                          type="button"
+                          aria-label="Photo suivante"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModalImgIndex(prev => (prev < modalImages.length - 1 ? prev + 1 : 0));
+                          }}
+                          style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 255, 255, 0.94)',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
+                            border: '1.5px solid rgba(235, 92, 142, 0.35)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            fontSize: '24px',
+                            lineHeight: 1,
+                            color: '#120e10',
+                            zIndex: 4,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          ›
+                        </button>
+
+                        {/* Compteur de photos */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '12px',
+                            left: '12px',
+                            background: 'rgba(18, 14, 16, 0.72)',
+                            color: '#ffffff',
+                            padding: '4px 10px',
+                            borderRadius: '100px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            backdropFilter: 'blur(6px)',
+                            zIndex: 3,
+                            letterSpacing: '0.04em'
+                          }}
+                        >
+                          {modalImgIndex + 1} / {modalImages.length}
+                        </div>
+
+                        {/* Points de pagination (Dots) */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '12px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            display: 'flex',
+                            gap: '6px',
+                            background: 'rgba(18, 14, 16, 0.55)',
+                            padding: '6px 12px',
+                            borderRadius: '100px',
+                            backdropFilter: 'blur(8px)',
+                            zIndex: 3
+                          }}
+                        >
+                          {modalImages.map((_, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              aria-label={`Photo ${idx + 1}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalImgIndex(idx);
+                              }}
+                              style={{
+                                width: modalImgIndex === idx ? '20px' : '7px',
+                                height: '7px',
+                                borderRadius: '100px',
+                                background: modalImgIndex === idx ? '#eb5c8e' : 'rgba(255,255,255,0.7)',
+                                border: 'none',
+                                padding: 0,
+                                cursor: 'pointer',
+                                transition: 'all 0.25s ease'
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className="modal-body">
               <span className="product-meta" id="modalCategory">{modalProduct.catLabel}</span>

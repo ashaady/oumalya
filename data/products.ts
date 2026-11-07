@@ -15,6 +15,7 @@ export interface Product {
   badge: string;
   img: string;
   image: string;
+  images?: string[];
   order: number;
 }
 
@@ -713,4 +714,12 @@ export const PRODUCTS_BY_ID = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
 export function formatPrice(price: number): string {
   return Number(price || 0).toLocaleString('fr-FR') + ' F';
 }
-
+export function getProductImages(p: Product | null | undefined): string[] {
+  if (!p) return ['/images/hero-abaya-pink.jpg'];
+  if (Array.isArray(p.images) && p.images.length > 0) {
+    const valid = p.images.filter(x => typeof x === 'string' && x.trim().length > 0);
+    if (valid.length > 0) return valid;
+  }
+  const fallback = p.img || p.image || '/images/hero-abaya-pink.jpg';
+  return [fallback];
+}
